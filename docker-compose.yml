@@ -1,0 +1,32 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: place-postgres
+    environment:
+      POSTGRES_DB: place_app
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - place-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: place-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - place-network
+
+volumes:
+  postgres_data:
+
+networks:
+  place-network:
+    driver: bridge
+

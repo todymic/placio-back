@@ -1,0 +1,18 @@
+<?php
+
+namespace App\Dto;
+
+use Symfony\Component\Uid\Uuid;
+
+class ChartResponse
+{
+    public function __construct(
+        public Uuid $id,
+        public string $name,
+        public string $slug,
+        public array $objects,
+        public \DateTimeImmutable $updatedAt,
+    ) {
+    }
+}
+

@@ -1,0 +1,57 @@
+security:
+    password_hashers:
+        Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
+        App\Entity\User:
+            algorithm: bcrypt
+
+    providers:
+        app_user_provider:
+            entity:
+                class: App\Entity\User
+                property: email
+
+    firewalls:
+        dev:
+            pattern: ^/(_profiler|_wdt|assets|build)/
+            security: false
+        api_key:
+            pattern: ^/api
+            stateless: true
+            custom_authenticator: App\Security\ApiKeyAuthenticator
+        jwt:
+            pattern: ^/api
+            stateless: true
+            jwt: ~
+        main:
+            lazy: true
+            provider: app_user_provider
+            jwt: ~
+            entry_point: jwt
+
+    access_control:
+        - { path: ^/api/auth/register, roles: PUBLIC_ACCESS }
+        - { path: ^/api/auth/login, roles: PUBLIC_ACCESS }
+        - { path: ^/api/api-keys, roles: ROLE_BACKOFFICE }
+        - { path: ^/api/categories, methods: [POST, PUT, DELETE], roles: ROLE_BACKOFFICE }
+        - { path: ^/api/categories, roles: IS_AUTHENTICATED }
+        - { path: ^/api/charts, methods: [POST, PUT, DELETE], roles: ROLE_BACKOFFICE }
+        - { path: ^/api/charts, roles: IS_AUTHENTICATED }
+        - { path: ^/api/events, methods: [POST, PUT, DELETE, PATCH], roles: ROLE_BACKOFFICE }
+        - { path: ^/api/events, methods: [GET], roles: IS_AUTHENTICATED }
+        - { path: ^/api/events/.*/hold, roles: IS_AUTHENTICATED }
+        - { path: ^/api/events/.*/book, roles: IS_AUTHENTICATED }
+        - { path: ^/api/events/.*/release, roles: IS_AUTHENTICATED }
+        - { path: ^/api/events/.*/change-status, roles: ROLE_BACKOFFICE }
+        - { path: ^/api/sessions, roles: IS_AUTHENTICATED }
+        - { path: ^/api/auth/me, roles: IS_AUTHENTICATED }
+        - { path: ^/api, roles: IS_AUTHENTICATED }
+
+when@test:
+    security:
+        password_hashers:
+            Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
+                algorithm: auto
+                cost: 4
+            App\Entity\User:
+                algorithm: bcrypt
+                cost: 4
