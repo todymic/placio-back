@@ -1,0 +1,25 @@
+nelmio_api_doc:
+    documentation:
+        info:
+            title: Place API
+            description: API de reservation de sieges (JWT + API Keys)
+            version: 1.0.0
+        components:
+            securitySchemes:
+                Bearer:
+                    type: http
+                    scheme: bearer
+                    bearerFormat: JWT
+                ApiKeyId:
+                    type: apiKey
+                    in: header
+                    name: X-Api-Key-Id
+                ApiKeySecret:
+                    type: apiKey
+                    in: header
+                    name: X-Api-Key-Secret
+    areas:
+        default:
+            path_patterns:
+                - ^/api(?!/doc$|/doc\.json$)
+

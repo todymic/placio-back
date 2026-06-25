@@ -6,6 +6,7 @@ use App\Dto\ChartObjectNode;
 use App\Dto\ChartObjectsUpdateRequest;
 use App\Dto\ChartRequest;
 use App\Service\ChartService;
+use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -23,6 +24,11 @@ class ChartController extends AbstractController
 
     #[Route('', methods: ['GET'])]
     #[IsGranted('IS_AUTHENTICATED')]
+    #[OA\Tag(name: 'Charts')]
+    #[OA\Security(name: 'Bearer')]
+    #[OA\Security(name: 'ApiKeyId')]
+    #[OA\Security(name: 'ApiKeySecret')]
+    #[OA\Response(response: 200, description: 'Liste des charts')]
     public function list(): JsonResponse
     {
         $charts = $this->chartService->findAll();
@@ -31,6 +37,22 @@ class ChartController extends AbstractController
 
     #[Route('', methods: ['POST'])]
     #[IsGranted('ROLE_BACKOFFICE')]
+    #[OA\Tag(name: 'Charts')]
+    #[OA\Security(name: 'Bearer')]
+    #[OA\Security(name: 'ApiKeyId')]
+    #[OA\Security(name: 'ApiKeySecret')]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['name', 'slug'],
+            properties: [
+                new OA\Property(property: 'name', type: 'string', example: 'Main Hall'),
+                new OA\Property(property: 'slug', type: 'string', example: 'main-hall'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 201, description: 'Chart cree')]
+    #[OA\Response(response: 403, description: 'Acces backoffice requis')]
     public function create(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
@@ -45,6 +67,13 @@ class ChartController extends AbstractController
 
     #[Route('/{id}', methods: ['GET'])]
     #[IsGranted('IS_AUTHENTICATED')]
+    #[OA\Tag(name: 'Charts')]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
+    #[OA\Security(name: 'Bearer')]
+    #[OA\Security(name: 'ApiKeyId')]
+    #[OA\Security(name: 'ApiKeySecret')]
+    #[OA\Response(response: 200, description: 'Chart')]
+    #[OA\Response(response: 404, description: 'Chart introuvable')]
     public function show(string $id): JsonResponse
     {
         $chart = $this->chartService->findById($id);
@@ -53,6 +82,23 @@ class ChartController extends AbstractController
 
     #[Route('/{id}', methods: ['PUT'])]
     #[IsGranted('ROLE_BACKOFFICE')]
+    #[OA\Tag(name: 'Charts')]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
+    #[OA\Security(name: 'Bearer')]
+    #[OA\Security(name: 'ApiKeyId')]
+    #[OA\Security(name: 'ApiKeySecret')]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['name', 'slug'],
+            properties: [
+                new OA\Property(property: 'name', type: 'string', example: 'Updated Hall'),
+                new OA\Property(property: 'slug', type: 'string', example: 'updated-hall'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Chart modifie')]
+    #[OA\Response(response: 404, description: 'Chart introuvable')]
     public function update(string $id, Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
@@ -67,6 +113,26 @@ class ChartController extends AbstractController
 
     #[Route('/{id}/objects', methods: ['PUT'])]
     #[IsGranted('ROLE_BACKOFFICE')]
+    #[OA\Tag(name: 'Charts')]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
+    #[OA\Security(name: 'Bearer')]
+    #[OA\Security(name: 'ApiKeyId')]
+    #[OA\Security(name: 'ApiKeySecret')]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['objects'],
+            properties: [
+                new OA\Property(
+                    property: 'objects',
+                    type: 'array',
+                    items: new OA\Items(type: 'object')
+                ),
+            ]
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Objets du chart mis a jour')]
+    #[OA\Response(response: 404, description: 'Chart introuvable')]
     public function updateObjects(string $id, Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
@@ -78,6 +144,13 @@ class ChartController extends AbstractController
 
     #[Route('/{id}', methods: ['DELETE'])]
     #[IsGranted('ROLE_BACKOFFICE')]
+    #[OA\Tag(name: 'Charts')]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
+    #[OA\Security(name: 'Bearer')]
+    #[OA\Security(name: 'ApiKeyId')]
+    #[OA\Security(name: 'ApiKeySecret')]
+    #[OA\Response(response: 200, description: 'Chart supprime')]
+    #[OA\Response(response: 404, description: 'Chart introuvable')]
     public function delete(string $id): JsonResponse
     {
         $this->chartService->delete($id);

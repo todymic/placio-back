@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Dto\UserResponse;
 use App\Service\UserService;
+use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -20,6 +21,20 @@ class AuthController extends AbstractController
     }
 
     #[Route('/register', methods: ['POST'])]
+    #[OA\Tag(name: 'Auth')]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['email', 'password'],
+            properties: [
+                new OA\Property(property: 'email', type: 'string', example: 'user@example.com'),
+                new OA\Property(property: 'password', type: 'string', example: 'ChangeMe123!'),
+                new OA\Property(property: 'displayName', type: 'string', example: 'John Doe'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 201, description: 'Utilisateur cree')]
+    #[OA\Response(response: 400, description: 'Payload invalide ou email deja utilise')]
     public function register(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
@@ -44,6 +59,25 @@ class AuthController extends AbstractController
     }
 
     #[Route('/login', methods: ['POST'])]
+    #[OA\Tag(name: 'Auth')]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['email', 'password'],
+            properties: [
+                new OA\Property(property: 'email', type: 'string', example: 'user@example.com'),
+                new OA\Property(property: 'password', type: 'string', example: 'ChangeMe123!'),
+            ]
+        )
+    )]
+    #[OA\Response(
+        response: 200,
+        description: 'Token JWT genere',
+        content: new OA\JsonContent(properties: [
+            new OA\Property(property: 'token', type: 'string'),
+        ])
+    )]
+    #[OA\Response(response: 401, description: 'Identifiants invalides')]
     public function login(Request $request): JsonResponse
     {
         // This endpoint is handled by Lexik JWT Authentication Bundle
@@ -53,6 +87,10 @@ class AuthController extends AbstractController
 
     #[Route('/me', methods: ['GET'])]
     #[IsGranted('IS_AUTHENTICATED')]
+    #[OA\Tag(name: 'Auth')]
+    #[OA\Security(name: 'Bearer')]
+    #[OA\Response(response: 200, description: 'Profil courant')]
+    #[OA\Response(response: 401, description: 'Non authentifie')]
     public function me(): JsonResponse
     {
         $user = $this->getUser();

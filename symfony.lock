@@ -47,6 +47,9 @@
             "config/packages/lexik_jwt_authentication.yaml"
         ]
     },
+    "nelmio/api-doc-bundle": {
+        "version": "v5.10.3"
+    },
     "symfony/console": {
         "version": "8.1",
         "recipe": {
@@ -152,6 +155,19 @@
         "files": [
             "config/packages/security.yaml",
             "config/routes/security.yaml"
+        ]
+    },
+    "symfony/twig-bundle": {
+        "version": "8.1",
+        "recipe": {
+            "repo": "github.com/symfony/recipes",
+            "branch": "main",
+            "version": "6.4",
+            "ref": "f250159ebe99153d0c640a3e7742876fc7453f2c"
+        },
+        "files": [
+            "config/packages/twig.yaml",
+            "templates/base.html.twig"
         ]
     },
     "symfony/uid": {

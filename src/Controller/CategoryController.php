@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Dto\CategoryRequest;
 use App\Service\CategoryService;
+use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -21,6 +22,12 @@ class CategoryController extends AbstractController
 
     #[Route('', methods: ['GET'])]
     #[IsGranted('IS_AUTHENTICATED')]
+    #[OA\Tag(name: 'Categories')]
+    #[OA\Security(name: 'Bearer')]
+    #[OA\Security(name: 'ApiKeyId')]
+    #[OA\Security(name: 'ApiKeySecret')]
+    #[OA\Response(response: 200, description: 'Liste des categories')]
+    #[OA\Response(response: 401, description: 'Non authentifie')]
     public function list(): JsonResponse
     {
         $categories = $this->categoryService->findAll();
@@ -29,6 +36,24 @@ class CategoryController extends AbstractController
 
     #[Route('', methods: ['POST'])]
     #[IsGranted('ROLE_BACKOFFICE')]
+    #[OA\Tag(name: 'Categories')]
+    #[OA\Security(name: 'Bearer')]
+    #[OA\Security(name: 'ApiKeyId')]
+    #[OA\Security(name: 'ApiKeySecret')]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['name', 'key', 'color'],
+            properties: [
+                new OA\Property(property: 'name', type: 'string', example: 'VIP'),
+                new OA\Property(property: 'key', type: 'string', example: 'vip'),
+                new OA\Property(property: 'color', type: 'string', example: '#FFAA00'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 201, description: 'Categorie creee')]
+    #[OA\Response(response: 400, description: 'Payload invalide')]
+    #[OA\Response(response: 403, description: 'Acces backoffice requis')]
     public function create(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
@@ -44,6 +69,13 @@ class CategoryController extends AbstractController
 
     #[Route('/{id}', methods: ['GET'])]
     #[IsGranted('IS_AUTHENTICATED')]
+    #[OA\Tag(name: 'Categories')]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
+    #[OA\Security(name: 'Bearer')]
+    #[OA\Security(name: 'ApiKeyId')]
+    #[OA\Security(name: 'ApiKeySecret')]
+    #[OA\Response(response: 200, description: 'Categorie')]
+    #[OA\Response(response: 404, description: 'Categorie introuvable')]
     public function show(string $id): JsonResponse
     {
         $category = $this->categoryService->findById($id);
@@ -52,6 +84,25 @@ class CategoryController extends AbstractController
 
     #[Route('/{id}', methods: ['PUT'])]
     #[IsGranted('ROLE_BACKOFFICE')]
+    #[OA\Tag(name: 'Categories')]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
+    #[OA\Security(name: 'Bearer')]
+    #[OA\Security(name: 'ApiKeyId')]
+    #[OA\Security(name: 'ApiKeySecret')]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['name', 'key', 'color'],
+            properties: [
+                new OA\Property(property: 'name', type: 'string', example: 'VIP Plus'),
+                new OA\Property(property: 'key', type: 'string', example: 'vip_plus'),
+                new OA\Property(property: 'color', type: 'string', example: '#FF6600'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Categorie modifiee')]
+    #[OA\Response(response: 403, description: 'Acces backoffice requis')]
+    #[OA\Response(response: 404, description: 'Categorie introuvable')]
     public function update(string $id, Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
@@ -67,6 +118,14 @@ class CategoryController extends AbstractController
 
     #[Route('/{id}', methods: ['DELETE'])]
     #[IsGranted('ROLE_BACKOFFICE')]
+    #[OA\Tag(name: 'Categories')]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
+    #[OA\Security(name: 'Bearer')]
+    #[OA\Security(name: 'ApiKeyId')]
+    #[OA\Security(name: 'ApiKeySecret')]
+    #[OA\Response(response: 200, description: 'Categorie supprimee')]
+    #[OA\Response(response: 403, description: 'Acces backoffice requis')]
+    #[OA\Response(response: 404, description: 'Categorie introuvable')]
     public function delete(string $id): JsonResponse
     {
         $this->categoryService->delete($id);

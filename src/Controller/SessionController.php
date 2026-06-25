@@ -4,6 +4,7 @@ namespace App\Controller;
 
 use App\Dto\SessionRequest;
 use App\Service\SessionService;
+use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -22,6 +23,22 @@ class SessionController extends AbstractController
 
     #[Route('', methods: ['POST'])]
     #[IsGranted('IS_AUTHENTICATED')]
+    #[OA\Tag(name: 'Sessions')]
+    #[OA\Security(name: 'Bearer')]
+    #[OA\Security(name: 'ApiKeyId')]
+    #[OA\Security(name: 'ApiKeySecret')]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['eventId'],
+            properties: [
+                new OA\Property(property: 'eventId', type: 'string', format: 'uuid'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 201, description: 'Session creee')]
+    #[OA\Response(response: 400, description: 'Payload invalide')]
+    #[OA\Response(response: 401, description: 'Non authentifie')]
     public function create(Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);

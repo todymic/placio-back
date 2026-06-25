@@ -14,21 +14,27 @@ security:
         dev:
             pattern: ^/(_profiler|_wdt|assets|build)/
             security: false
-        api_key:
+        login:
+            pattern: ^/api/auth/login$
+            stateless: true
+            provider: app_user_provider
+            json_login:
+                check_path: /api/auth/login
+                username_path: email
+                password_path: password
+                success_handler: lexik_jwt_authentication.handler.authentication_success
+                failure_handler: lexik_jwt_authentication.handler.authentication_failure
+        api:
             pattern: ^/api
             stateless: true
-            custom_authenticator: App\Security\ApiKeyAuthenticator
-        jwt:
-            pattern: ^/api
-            stateless: true
-            jwt: ~
-        main:
-            lazy: true
             provider: app_user_provider
             jwt: ~
-            entry_point: jwt
+            custom_authenticators:
+                - App\Security\ApiKeyAuthenticator
 
     access_control:
+        - { path: ^/api/doc$, roles: PUBLIC_ACCESS }
+        - { path: ^/api/doc\.json$, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/register, roles: PUBLIC_ACCESS }
         - { path: ^/api/auth/login, roles: PUBLIC_ACCESS }
         - { path: ^/api/api-keys, roles: ROLE_BACKOFFICE }
@@ -36,12 +42,12 @@ security:
         - { path: ^/api/categories, roles: IS_AUTHENTICATED }
         - { path: ^/api/charts, methods: [POST, PUT, DELETE], roles: ROLE_BACKOFFICE }
         - { path: ^/api/charts, roles: IS_AUTHENTICATED }
-        - { path: ^/api/events, methods: [POST, PUT, DELETE, PATCH], roles: ROLE_BACKOFFICE }
-        - { path: ^/api/events, methods: [GET], roles: IS_AUTHENTICATED }
         - { path: ^/api/events/.*/hold, roles: IS_AUTHENTICATED }
         - { path: ^/api/events/.*/book, roles: IS_AUTHENTICATED }
         - { path: ^/api/events/.*/release, roles: IS_AUTHENTICATED }
         - { path: ^/api/events/.*/change-status, roles: ROLE_BACKOFFICE }
+        - { path: ^/api/events, methods: [POST, PUT, DELETE, PATCH], roles: ROLE_BACKOFFICE }
+        - { path: ^/api/events, methods: [GET], roles: IS_AUTHENTICATED }
         - { path: ^/api/sessions, roles: IS_AUTHENTICATED }
         - { path: ^/api/auth/me, roles: IS_AUTHENTICATED }
         - { path: ^/api, roles: IS_AUTHENTICATED }

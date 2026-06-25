@@ -11,7 +11,9 @@
         "doctrine/doctrine-migrations-bundle": "^4.0",
         "doctrine/orm": "^3.6",
         "lexik/jwt-authentication-bundle": "^3.2",
+        "nelmio/api-doc-bundle": "^5.2",
         "predis/predis": "^3.5",
+        "symfony/asset": "8.1.*",
         "symfony/console": "8.1.*",
         "symfony/dotenv": "8.1.*",
         "symfony/flex": "^2",
@@ -23,9 +25,11 @@
         "symfony/security-bundle": "8.1.*",
         "symfony/serializer": "8.1.*",
         "symfony/string": "8.1.*",
+        "symfony/twig-bundle": "8.1.*",
         "symfony/uid": "8.1.*",
         "symfony/validator": "8.1.*",
-        "symfony/yaml": "8.1.*"
+        "symfony/yaml": "8.1.*",
+        "twig/twig": "^3.0"
     },
     "config": {
         "allow-plugins": {

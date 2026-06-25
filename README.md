@@ -22,6 +22,14 @@ Application complète de gestion de réservation de sièges dans des événement
 
 ### Étapes d'installation
 
+Option rapide (recommandée):
+
+```bash
+make bootstrap
+```
+
+Option manuelle:
+
 1. **Cloner le projet**
 ```bash
 cd /Users/rtodymic/PhpstormProjects/place/place-symfony
@@ -34,7 +42,7 @@ composer install
 
 3. **Démarrer les services Docker**
 ```bash
-docker-compose up -d
+docker compose -f docker-compose.yml up -d
 ```
 
 4. **Créer la base de données**
@@ -62,11 +70,38 @@ php -S localhost:8000 -t public
 
 L'application sera accessible sur `http://localhost:8000`
 
+## Commandes utiles (Make)
+
+```bash
+make bootstrap
+make up
+make down
+make migrate
+make serve
+make demo-flow
+```
+
 ## Documentation API
 
 Une fois le serveur démarré, la documentation Swagger/OpenAPI est disponible sur:
-- http://localhost:8000/api/doc (si installé)
-- http://localhost:8000/v3/api-docs (JSON)
+- http://127.0.0.1:8000/api/doc
+- http://127.0.0.1:8000/api/doc.json
+
+## Scenario E2E (API keys + hold + book)
+
+Le script `scripts/demo_flow.sh` automatise:
+
+1. inscription d'un utilisateur backoffice,
+2. login JWT,
+3. creation d'une API key `backoffice` et d'une API key `public`,
+4. creation d'un chart et d'un event,
+5. hold puis book de sieges.
+
+Commande:
+
+```bash
+make demo-flow
+```
 
 ## Architecture de l'application
 

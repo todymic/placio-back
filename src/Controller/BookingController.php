@@ -8,6 +8,7 @@ use App\Dto\HoldRequest;
 use App\Dto\ReleaseRequest;
 use App\Entity\SeatStatus;
 use App\Service\BookingService;
+use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -26,6 +27,24 @@ class BookingController extends AbstractController
 
     #[Route('/hold', methods: ['POST'])]
     #[IsGranted('IS_AUTHENTICATED')]
+    #[OA\Tag(name: 'Booking')]
+    #[OA\Parameter(name: 'eventId', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
+    #[OA\Security(name: 'Bearer')]
+    #[OA\Security(name: 'ApiKeyId')]
+    #[OA\Security(name: 'ApiKeySecret')]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['seatKeys', 'holdToken'],
+            properties: [
+                new OA\Property(property: 'seatKeys', type: 'array', items: new OA\Items(type: 'string'), example: ['A1', 'A2']),
+                new OA\Property(property: 'holdToken', type: 'string', example: 'client-session-uuid'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Hold cree')]
+    #[OA\Response(response: 400, description: 'Sieges indisponibles ou payload invalide')]
+    #[OA\Response(response: 404, description: 'Evenement ou sieges introuvables')]
     public function hold(string $eventId, Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
@@ -47,6 +66,24 @@ class BookingController extends AbstractController
 
     #[Route('/book', methods: ['POST'])]
     #[IsGranted('IS_AUTHENTICATED')]
+    #[OA\Tag(name: 'Booking')]
+    #[OA\Parameter(name: 'eventId', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
+    #[OA\Security(name: 'Bearer')]
+    #[OA\Security(name: 'ApiKeyId')]
+    #[OA\Security(name: 'ApiKeySecret')]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['seatKeys', 'holdToken'],
+            properties: [
+                new OA\Property(property: 'seatKeys', type: 'array', items: new OA\Items(type: 'string'), example: ['A1', 'A2']),
+                new OA\Property(property: 'holdToken', type: 'string', example: 'client-session-uuid'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Reservation confirmee')]
+    #[OA\Response(response: 400, description: 'Sieges non reservables ou payload invalide')]
+    #[OA\Response(response: 404, description: 'Evenement introuvable')]
     public function book(string $eventId, Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
@@ -68,6 +105,23 @@ class BookingController extends AbstractController
 
     #[Route('/release', methods: ['POST'])]
     #[IsGranted('IS_AUTHENTICATED')]
+    #[OA\Tag(name: 'Booking')]
+    #[OA\Parameter(name: 'eventId', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
+    #[OA\Security(name: 'Bearer')]
+    #[OA\Security(name: 'ApiKeyId')]
+    #[OA\Security(name: 'ApiKeySecret')]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['seatKeys', 'holdToken'],
+            properties: [
+                new OA\Property(property: 'seatKeys', type: 'array', items: new OA\Items(type: 'string'), example: ['A1', 'A2']),
+                new OA\Property(property: 'holdToken', type: 'string', example: 'client-session-uuid'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Sieges liberes')]
+    #[OA\Response(response: 400, description: 'Sieges non detenus par ce token ou payload invalide')]
     public function release(string $eventId, Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
@@ -89,6 +143,24 @@ class BookingController extends AbstractController
 
     #[Route('/change-status', methods: ['POST'])]
     #[IsGranted('ROLE_BACKOFFICE')]
+    #[OA\Tag(name: 'Booking')]
+    #[OA\Parameter(name: 'eventId', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
+    #[OA\Security(name: 'Bearer')]
+    #[OA\Security(name: 'ApiKeyId')]
+    #[OA\Security(name: 'ApiKeySecret')]
+    #[OA\RequestBody(
+        required: true,
+        content: new OA\JsonContent(
+            required: ['seatKeys', 'status'],
+            properties: [
+                new OA\Property(property: 'seatKeys', type: 'array', items: new OA\Items(type: 'string'), example: ['A1', 'A2']),
+                new OA\Property(property: 'status', type: 'string', enum: ['available', 'hold', 'booked', 'canceled'], example: 'canceled'),
+            ]
+        )
+    )]
+    #[OA\Response(response: 200, description: 'Statut des sieges mis a jour')]
+    #[OA\Response(response: 400, description: 'Payload invalide')]
+    #[OA\Response(response: 403, description: 'Acces backoffice requis')]
     public function changeStatus(string $eventId, Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
