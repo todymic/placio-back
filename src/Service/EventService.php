@@ -181,6 +181,8 @@ class EventService
             $seats
         );
 
+        $chartObjects = $event->getChart()?->getObjectsJson() ?? [];
+
         return new EventDetailResponse(
             $event->getId(),
             $event->getTitle(),
@@ -189,6 +191,7 @@ class EventService
             $event->getChart()?->getName(),
             $event->getCreatedAt(),
             $seatDtos,
+            $chartObjects,
         );
     }
 }

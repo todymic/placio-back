@@ -38,3 +38,13 @@ services:
     App\Service\HoldExpirationJob:
         arguments:
             $redisUrl: '%env(string:REDIS_URL)%'
+
+    # SeatStreamController — connexion Redis dédiée pour le pub/sub SSE
+    App\Controller\SeatStreamController:
+        arguments:
+            $redisUrl: '%env(string:REDIS_URL)%'
+        tags: ['controller.service_arguments']
+
+
+
+

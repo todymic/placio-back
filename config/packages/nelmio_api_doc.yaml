@@ -18,8 +18,13 @@ nelmio_api_doc:
                     type: apiKey
                     in: header
                     name: X-Api-Key-Secret
+        security:
+            - Bearer: []
+            - ApiKeyId: []
+              ApiKeySecret: []
     areas:
         default:
             path_patterns:
                 - ^/api(?!/doc$|/doc\.json$)
+
 

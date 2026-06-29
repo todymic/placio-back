@@ -21,6 +21,7 @@ class AuthController extends AbstractController
     }
 
     #[Route('/register', methods: ['POST'])]
+    #[OA\Post(security: [])]
     #[OA\Tag(name: 'Auth')]
     #[OA\RequestBody(
         required: true,
@@ -59,6 +60,7 @@ class AuthController extends AbstractController
     }
 
     #[Route('/login', methods: ['POST'])]
+    #[OA\Post(security: [])]
     #[OA\Tag(name: 'Auth')]
     #[OA\RequestBody(
         required: true,
@@ -88,7 +90,6 @@ class AuthController extends AbstractController
     #[Route('/me', methods: ['GET'])]
     #[IsGranted('IS_AUTHENTICATED')]
     #[OA\Tag(name: 'Auth')]
-    #[OA\Security(name: 'Bearer')]
     #[OA\Response(response: 200, description: 'Profil courant')]
     #[OA\Response(response: 401, description: 'Non authentifie')]
     public function me(): JsonResponse

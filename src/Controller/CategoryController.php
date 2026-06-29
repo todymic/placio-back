@@ -23,9 +23,6 @@ class CategoryController extends AbstractController
     #[Route('', methods: ['GET'])]
     #[IsGranted('IS_AUTHENTICATED')]
     #[OA\Tag(name: 'Categories')]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\Response(response: 200, description: 'Liste des categories')]
     #[OA\Response(response: 401, description: 'Non authentifie')]
     public function list(): JsonResponse
@@ -37,9 +34,6 @@ class CategoryController extends AbstractController
     #[Route('', methods: ['POST'])]
     #[IsGranted('ROLE_BACKOFFICE')]
     #[OA\Tag(name: 'Categories')]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\RequestBody(
         required: true,
         content: new OA\JsonContent(
@@ -71,9 +65,6 @@ class CategoryController extends AbstractController
     #[IsGranted('IS_AUTHENTICATED')]
     #[OA\Tag(name: 'Categories')]
     #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\Response(response: 200, description: 'Categorie')]
     #[OA\Response(response: 404, description: 'Categorie introuvable')]
     public function show(string $id): JsonResponse
@@ -86,9 +77,6 @@ class CategoryController extends AbstractController
     #[IsGranted('ROLE_BACKOFFICE')]
     #[OA\Tag(name: 'Categories')]
     #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\RequestBody(
         required: true,
         content: new OA\JsonContent(
@@ -120,9 +108,6 @@ class CategoryController extends AbstractController
     #[IsGranted('ROLE_BACKOFFICE')]
     #[OA\Tag(name: 'Categories')]
     #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\Response(response: 200, description: 'Categorie supprimee')]
     #[OA\Response(response: 403, description: 'Acces backoffice requis')]
     #[OA\Response(response: 404, description: 'Categorie introuvable')]

@@ -23,9 +23,6 @@ class EventController extends AbstractController
     #[Route('', methods: ['GET'])]
     #[IsGranted('IS_AUTHENTICATED')]
     #[OA\Tag(name: 'Events')]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\Response(response: 200, description: 'Liste des evenements')]
     public function list(): JsonResponse
     {
@@ -36,9 +33,6 @@ class EventController extends AbstractController
     #[Route('', methods: ['POST'])]
     #[IsGranted('ROLE_BACKOFFICE')]
     #[OA\Tag(name: 'Events')]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\RequestBody(
         required: true,
         content: new OA\JsonContent(
@@ -69,9 +63,6 @@ class EventController extends AbstractController
     #[IsGranted('IS_AUTHENTICATED')]
     #[OA\Tag(name: 'Events')]
     #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\Response(response: 200, description: 'Evenement detaille')]
     #[OA\Response(response: 404, description: 'Evenement introuvable')]
     public function show(string $id): JsonResponse
@@ -84,9 +75,6 @@ class EventController extends AbstractController
     #[IsGranted('ROLE_BACKOFFICE')]
     #[OA\Tag(name: 'Events')]
     #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\RequestBody(
         required: true,
         content: new OA\JsonContent(
@@ -117,9 +105,6 @@ class EventController extends AbstractController
     #[IsGranted('ROLE_BACKOFFICE')]
     #[OA\Tag(name: 'Events')]
     #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\Response(response: 200, description: 'Evenement supprime')]
     #[OA\Response(response: 404, description: 'Evenement introuvable')]
     public function delete(string $id): JsonResponse
@@ -133,9 +118,6 @@ class EventController extends AbstractController
     #[OA\Tag(name: 'Events')]
     #[OA\Parameter(name: 'eventId', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
     #[OA\Parameter(name: 'chartId', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\Response(response: 200, description: 'Chart lie a l evenement')]
     #[OA\Response(response: 404, description: 'Evenement ou chart introuvable')]
     public function linkChart(string $eventId, string $chartId): JsonResponse
@@ -148,9 +130,6 @@ class EventController extends AbstractController
     #[IsGranted('IS_AUTHENTICATED')]
     #[OA\Tag(name: 'Events')]
     #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\Response(response: 200, description: 'Liste des statuts de sieges')]
     #[OA\Response(response: 404, description: 'Evenement introuvable')]
     public function getSeats(string $id): JsonResponse

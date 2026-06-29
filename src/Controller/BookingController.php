@@ -29,9 +29,6 @@ class BookingController extends AbstractController
     #[IsGranted('IS_AUTHENTICATED')]
     #[OA\Tag(name: 'Booking')]
     #[OA\Parameter(name: 'eventId', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\RequestBody(
         required: true,
         content: new OA\JsonContent(
@@ -68,9 +65,6 @@ class BookingController extends AbstractController
     #[IsGranted('IS_AUTHENTICATED')]
     #[OA\Tag(name: 'Booking')]
     #[OA\Parameter(name: 'eventId', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\RequestBody(
         required: true,
         content: new OA\JsonContent(
@@ -107,9 +101,6 @@ class BookingController extends AbstractController
     #[IsGranted('IS_AUTHENTICATED')]
     #[OA\Tag(name: 'Booking')]
     #[OA\Parameter(name: 'eventId', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\RequestBody(
         required: true,
         content: new OA\JsonContent(
@@ -145,9 +136,6 @@ class BookingController extends AbstractController
     #[IsGranted('ROLE_BACKOFFICE')]
     #[OA\Tag(name: 'Booking')]
     #[OA\Parameter(name: 'eventId', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\RequestBody(
         required: true,
         content: new OA\JsonContent(

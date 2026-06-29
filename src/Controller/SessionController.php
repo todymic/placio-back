@@ -24,9 +24,6 @@ class SessionController extends AbstractController
     #[Route('', methods: ['POST'])]
     #[IsGranted('IS_AUTHENTICATED')]
     #[OA\Tag(name: 'Sessions')]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\RequestBody(
         required: true,
         content: new OA\JsonContent(

@@ -25,9 +25,6 @@ class ChartController extends AbstractController
     #[Route('', methods: ['GET'])]
     #[IsGranted('IS_AUTHENTICATED')]
     #[OA\Tag(name: 'Charts')]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\Response(response: 200, description: 'Liste des charts')]
     public function list(): JsonResponse
     {
@@ -38,9 +35,6 @@ class ChartController extends AbstractController
     #[Route('', methods: ['POST'])]
     #[IsGranted('ROLE_BACKOFFICE')]
     #[OA\Tag(name: 'Charts')]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\RequestBody(
         required: true,
         content: new OA\JsonContent(
@@ -69,9 +63,6 @@ class ChartController extends AbstractController
     #[IsGranted('IS_AUTHENTICATED')]
     #[OA\Tag(name: 'Charts')]
     #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\Response(response: 200, description: 'Chart')]
     #[OA\Response(response: 404, description: 'Chart introuvable')]
     public function show(string $id): JsonResponse
@@ -84,9 +75,6 @@ class ChartController extends AbstractController
     #[IsGranted('ROLE_BACKOFFICE')]
     #[OA\Tag(name: 'Charts')]
     #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\RequestBody(
         required: true,
         content: new OA\JsonContent(
@@ -115,9 +103,6 @@ class ChartController extends AbstractController
     #[IsGranted('ROLE_BACKOFFICE')]
     #[OA\Tag(name: 'Charts')]
     #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\RequestBody(
         required: true,
         content: new OA\JsonContent(
@@ -146,9 +131,6 @@ class ChartController extends AbstractController
     #[IsGranted('ROLE_BACKOFFICE')]
     #[OA\Tag(name: 'Charts')]
     #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\Response(response: 200, description: 'Chart supprime')]
     #[OA\Response(response: 404, description: 'Chart introuvable')]
     public function delete(string $id): JsonResponse

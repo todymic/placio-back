@@ -31,6 +31,17 @@ class BookingService
         $this->holdDurationMinutes = $holdDurationMinutes;
     }
 
+    /** Publie les changements de statut sur le canal Redis pour les clients SSE. */
+    private function publishSeatChanges(Uuid $eventId, array $seats): void
+    {
+        $changes = array_map(fn(EventSeat $s) => [
+            'seatKey' => $s->getSeatKey(),
+            'status'  => $s->getStatus()->value,
+        ], $seats);
+
+        $this->redis->publish("seats:{$eventId}", json_encode($changes));
+    }
+
     public function holdSeats(Uuid $eventId, array $seatKeys, string $holdToken): HoldResponse
     {
         // Deduplicate
@@ -89,6 +100,7 @@ class BookingService
             $this->em->persist($seat);
         }
         $this->em->flush();
+        $this->publishSeatChanges($eventId, $seats);
 
         return new HoldResponse(
             $holdToken,
@@ -134,6 +146,7 @@ class BookingService
             $this->em->persist($seat);
         }
         $this->em->flush();
+        $this->publishSeatChanges($eventId, $seats);
 
         // Clean Redis
         $pipe = $this->redis->pipeline();
@@ -177,6 +190,7 @@ class BookingService
             $this->em->persist($seat);
         }
         $this->em->flush();
+        $this->publishSeatChanges($eventId, $seats);
 
         // Clean Redis
         $pipe = $this->redis->pipeline();
@@ -215,6 +229,7 @@ class BookingService
             $this->em->persist($seat);
         }
         $this->em->flush();
+        $this->publishSeatChanges($eventId, $seats);
 
         // Clean Redis if releasing
         if ($newStatus !== SeatStatus::HOLD) {

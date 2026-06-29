@@ -14,6 +14,7 @@ class EventDetailResponse
         public ?string $chartName = null,
         public ?\DateTimeImmutable $createdAt = null,
         public array $seats = [],
+        public array $chartObjects = [],
     ) {
     }
 }

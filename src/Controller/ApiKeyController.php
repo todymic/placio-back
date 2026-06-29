@@ -23,9 +23,6 @@ class ApiKeyController extends AbstractController
 
     #[Route('', methods: ['GET'])]
     #[OA\Tag(name: 'API Keys')]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\Response(response: 200, description: 'Liste des API keys')]
     #[OA\Response(response: 401, description: 'Non authentifie')]
     #[OA\Response(response: 403, description: 'Acces backoffice requis')]
@@ -37,9 +34,6 @@ class ApiKeyController extends AbstractController
 
     #[Route('', methods: ['POST'])]
     #[OA\Tag(name: 'API Keys')]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\RequestBody(
         required: true,
         content: new OA\JsonContent(
@@ -69,9 +63,6 @@ class ApiKeyController extends AbstractController
     #[Route('/{id}', methods: ['DELETE'])]
     #[OA\Tag(name: 'API Keys')]
     #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
-    #[OA\Security(name: 'Bearer')]
-    #[OA\Security(name: 'ApiKeyId')]
-    #[OA\Security(name: 'ApiKeySecret')]
     #[OA\Response(response: 200, description: 'API key desactivee')]
     #[OA\Response(response: 401, description: 'Non authentifie')]
     #[OA\Response(response: 403, description: 'Acces backoffice requis')]
