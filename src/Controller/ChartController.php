@@ -2,9 +2,9 @@
 
 namespace App\Controller;
 
-use App\Dto\ChartObjectNode;
-use App\Dto\ChartObjectsUpdateRequest;
 use App\Dto\ChartRequest;
+use App\Dto\CategoryRequest;
+use App\Service\CategoryService;
 use App\Service\ChartService;
 use OpenApi\Attributes as OA;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -18,7 +18,8 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class ChartController extends AbstractController
 {
     public function __construct(
-        private ChartService $chartService,
+        private readonly ChartService    $chartService,
+        private readonly CategoryService $categoryService,
     ) {
     }
 
@@ -99,6 +100,39 @@ class ChartController extends AbstractController
         return $this->json($response);
     }
 
+    #[Route('/{id}/mark-pending', methods: ['POST'])]
+    #[IsGranted('ROLE_BACKOFFICE')]
+    #[OA\Tag(name: 'Charts')]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
+    #[OA\Response(response: 200, description: 'Modifications marquées comme en attente')]
+    public function markPending(string $id): JsonResponse
+    {
+        return $this->json($this->chartService->markPendingChanges($id));
+    }
+
+    #[Route('/{id}/publish', methods: ['POST'])]
+    #[IsGranted('ROLE_BACKOFFICE')]
+    #[OA\Tag(name: 'Charts')]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
+    #[OA\Response(response: 200, description: 'Modifications marquées comme publiées')]
+    public function publish(string $id): JsonResponse
+    {
+        return $this->json($this->chartService->clearPendingChanges($id));
+    }
+
+    #[Route('/{id}/status', methods: ['PATCH'])]
+    #[IsGranted('ROLE_BACKOFFICE')]
+    #[OA\Tag(name: 'Charts')]
+    #[OA\Parameter(name: 'id', in: 'path', required: true, schema: new OA\Schema(type: 'string', format: 'uuid'))]
+    #[OA\RequestBody(required: true, content: new OA\JsonContent(required: ['status'], properties: [new OA\Property(property: 'status', type: 'string', enum: ['draft', 'published', 'archived'])]))]
+    #[OA\Response(response: 200, description: 'Statut mis à jour')]
+    public function updateStatus(string $id, Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+        $response = $this->chartService->updateStatus($id, $data['status'] ?? '');
+        return $this->json($response);
+    }
+
     #[Route('/{id}/objects', methods: ['PUT'])]
     #[IsGranted('ROLE_BACKOFFICE')]
     #[OA\Tag(name: 'Charts')]
@@ -121,7 +155,7 @@ class ChartController extends AbstractController
     public function updateObjects(string $id, Request $request): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
-        $objects = array_map(fn($obj) => ChartObjectNode::fromArray($obj), $data['objects'] ?? []);
+        $objects = $data['objects'] ?? [];
 
         $response = $this->chartService->updateObjects($id, $objects);
         return $this->json($response);
@@ -137,6 +171,70 @@ class ChartController extends AbstractController
     {
         $this->chartService->delete($id);
         return $this->json(['message' => 'Chart deleted']);
+    }
+
+    #[Route('/{chartKey}/categories', methods: ['GET'])]
+    #[IsGranted('IS_AUTHENTICATED')]
+    #[OA\Tag(name: 'Charts')]
+    #[OA\Response(response: 200, description: 'Liste des categories du chart')]
+    public function listCategories(string $chartKey): JsonResponse
+    {
+        return $this->json($this->categoryService->findAllForChart($chartKey));
+    }
+
+    #[Route('/{chartKey}/categories', methods: ['POST'])]
+    #[IsGranted('ROLE_BACKOFFICE')]
+    #[OA\Tag(name: 'Charts')]
+    #[OA\Response(response: 201, description: 'Categorie creee pour le chart')]
+    public function createCategory(string $chartKey, Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+        $categoryRequest = new CategoryRequest(
+            $data['name'] ?? $data['label'] ?? '',
+            $data['key'] ?? '',
+            $data['color'] ?? '',
+            (int)($data['price'] ?? 0),
+        );
+
+        $response = $this->categoryService->createForChart($chartKey, $categoryRequest);
+        return $this->json($response, Response::HTTP_CREATED);
+    }
+
+    #[Route('/{chartKey}/categories/{key}', methods: ['GET'])]
+    #[IsGranted('IS_AUTHENTICATED')]
+    #[OA\Tag(name: 'Charts')]
+    #[OA\Response(response: 200, description: 'Categorie du chart')]
+    public function showCategory(string $chartKey, string $key): JsonResponse
+    {
+        return $this->json($this->categoryService->findByChartAndKey($chartKey, $key));
+    }
+
+    #[Route('/{chartKey}/categories/{key}', methods: ['PUT'])]
+    #[IsGranted('ROLE_BACKOFFICE')]
+    #[OA\Tag(name: 'Charts')]
+    #[OA\Response(response: 200, description: 'Categorie du chart modifiee')]
+    public function updateCategory(string $chartKey, string $key, Request $request): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+        $categoryRequest = new CategoryRequest(
+            $data['name'] ?? $data['label'] ?? '',
+            $data['key'] ?? $key,
+            $data['color'] ?? '',
+            (int)($data['price'] ?? 0),
+        );
+
+        $response = $this->categoryService->updateByChartAndKey($chartKey, $key, $categoryRequest);
+        return $this->json($response);
+    }
+
+    #[Route('/{chartKey}/categories/{key}', methods: ['DELETE'])]
+    #[IsGranted('ROLE_BACKOFFICE')]
+    #[OA\Tag(name: 'Charts')]
+    #[OA\Response(response: 200, description: 'Categorie du chart supprimee')]
+    public function deleteCategory(string $chartKey, string $key): JsonResponse
+    {
+        $this->categoryService->deleteByChartAndKey($chartKey, $key);
+        return $this->json(['message' => 'Category deleted']);
     }
 }
 
