@@ -45,6 +45,12 @@ services:
             $redisUrl: '%env(string:REDIS_URL)%'
         tags: ['controller.service_arguments']
 
+    # AdminSeatStreamController — SSE admin (auth JWT backoffice)
+    App\Controller\AdminSeatStreamController:
+        arguments:
+            $redisUrl: '%env(string:REDIS_URL)%'
+        tags: ['controller.service_arguments']
+
 
 
 
