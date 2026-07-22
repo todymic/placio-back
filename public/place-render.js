@@ -477,21 +477,20 @@
       const color = this._catColor(catId);
       const bs    = this._bookingStatus(key);
       const sel   = this._selected.has(key);
-      let bg, fg, border='none', boxShadow='none', outline='none', outlineOffset='0px';
+      let bg, fg, border='none', boxShadow='none';
 
       if (planStatus === 'disabled' || bs === 'booked' || bs === 'canceled') {
         bg='#e5e7eb'; fg='#9ca3af'; border='1px solid #d1d5db';
       } else if (bs === 'hold') {
         bg='#d1d5db'; fg='#6b7280'; border='1px solid #9ca3af';
       } else if (sel) {
-        // border inside (consumes colored fill with box-sizing:border-box) + outline outside fixed
         bg=color; fg='#fff';
-        border='3px solid rgba(255,255,255,0.88)';
-        outline='2px solid '+color; outlineOffset='1px';
+        // white gap (3px) between fill and outer colored ring — gap shrinks on hover → fill grows
+        boxShadow='0 0 0 3px rgba(255,255,255,0.9), 0 0 0 5px '+color;
       } else {
         bg=color; fg='#fff';
       }
-      return {bg, fg, border, boxShadow, outline, outlineOffset};
+      return {bg, fg, border, boxShadow};
     }
 
     _cursor(key, planStatus) {
@@ -544,14 +543,13 @@
     _refreshColors() {
       this._canvas.querySelectorAll('[data-sk]').forEach(e => {
         const key=e.dataset.sk, catId=e.dataset.cat, ps=e.dataset.ps;
-        const {bg,fg,border,boxShadow,outline,outlineOffset} = this._seatStyle(key, catId, ps);
+        const {bg,fg,border,boxShadow} = this._seatStyle(key, catId, ps);
         const sel = this._selected.has(key);
         e.style.background    = bg;
         e.style.color         = fg;
         e.style.border        = border;
+        e.style.outline       = 'none';
         e.style.boxShadow     = boxShadow || 'none';
-        e.style.outline       = outline || 'none';
-        e.style.outlineOffset = outlineOffset || '0px';
         e.style.filter        = '';
         e.style.cursor        = this._cursor(key, ps);
         e.style.zIndex        = sel ? '3' : '';
@@ -580,9 +578,7 @@
         padding:shape==='rounded' ? '0 4px' : '0',
         borderRadius: shape==='round' ? '50%' : shape==='rounded' ? '10px' : '4px',
         visibility:planStatus==='deleted' ? 'hidden' : 'visible',
-        outline:       this._selected.has(key) ? '2px solid '+this._catColor(catId) : 'none',
-        outlineOffset: this._selected.has(key) ? '1px' : '0px',
-        border:        this._selected.has(key) ? '3px solid rgba(255,255,255,0.88)' : (border || 'none'),
+        boxShadow: this._selected.has(key) ? '0 0 0 3px rgba(255,255,255,0.9), 0 0 0 5px '+this._catColor(catId) : 'none',
       });
       const displayLabel = (size>=14 && planStatus!=='deleted') ? labelText : '';
       s.dataset.sk     = key;
@@ -596,8 +592,8 @@
           if (planStatus!=='disabled') {
             this._showTooltip(s, {...tipInfo, key, planStatus});
             if (this._selected.has(key)) {
-              // inner border shrinks → colored fill expands; outer outline stays fixed
-              s.style.border = '1px solid rgba(255,255,255,0.88)';
+              // white gap shrinks → inner fill grows; outer colored ring stays fixed
+              s.style.boxShadow = '0 0 0 1px rgba(255,255,255,0.9), 0 0 0 5px '+this._catColor(catId);
             } else if (this._isClickable(key, planStatus)) {
               s.style.filter = 'brightness(1.12)';
             }
@@ -607,7 +603,7 @@
           this._hideTooltip();
           s.style.filter = '';
           if (this._selected.has(key)) {
-            s.style.border = '3px solid rgba(255,255,255,0.88)';
+            s.style.boxShadow = '0 0 0 3px rgba(255,255,255,0.9), 0 0 0 5px '+this._catColor(catId);
           }
         });
         s.addEventListener('pointerdown', () => { this._didDrag=false; });
