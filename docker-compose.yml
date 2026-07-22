@@ -28,15 +28,15 @@ services:
     container_name: place-mercure
     restart: unless-stopped
     environment:
-      SERVER_NAME: ':3000'
+      SERVER_NAME: ':3010'
       MERCURE_PUBLISHER_JWT_KEY: '${MERCURE_JWT_SECRET}'
       MERCURE_SUBSCRIBER_JWT_KEY: '${MERCURE_JWT_SECRET}'
       MERCURE_EXTRA_DIRECTIVES: |
-        cors_origins http://localhost:5173 https://localhost:5173 http://localhost:8000 https://localhost:8000 http://localhost:3001 https://localhost:3001
+        cors_origins http://localhost:5173 https://localhost:5173 http://localhost:8000 https://localhost:8000 http://localhost:3001 https://localhost:3001 http://localhost:3000 https://localhost:3000
         anonymous
         subscriptions
     ports:
-      - "3000:3000"
+      - "3010:3010"
     networks:
       - place-network
 
