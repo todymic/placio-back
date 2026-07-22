@@ -539,9 +539,9 @@
       this._refreshColors();
       if (this._onSelectionChange) this._onSelectionChange();
       // Bounce animation via animate.css
-      seatEl.classList.remove('animate__animated', 'animate__bounceIn');
+      seatEl.classList.remove('animate__animated', 'animate__fadeIn');
       void seatEl.offsetWidth;
-      seatEl.classList.add('animate__animated', 'animate__bounceIn');
+      seatEl.classList.add('animate__animated', 'animate__fadeIn');
     }
 
     _setSeatContent(e, selected, label) {
