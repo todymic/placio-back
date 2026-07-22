@@ -28,6 +28,11 @@ services:
             $jwtSecret: '%env(string:JWT_SECRET_KEY)%'
             $sessionDurationMinutes: '%env(int:SEATING_SESSION_DURATION_MINUTES)%'
 
+    # EventService — Mercure public URL for widget subscribers
+    App\Service\EventService:
+        arguments:
+            $mercurePublicUrl: '%env(default::MERCURE_PUBLIC_URL)%'
+
     # BookingService configuration
     App\Service\BookingService:
         arguments:

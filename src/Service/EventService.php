@@ -2,7 +2,6 @@
 
 namespace App\Service;
 
-use App\Dto\ChartObjectNode;
 use App\Dto\EventDetailResponse;
 use App\Dto\EventRequest;
 use App\Dto\EventResponse;
@@ -13,11 +12,14 @@ use App\Entity\EventSeat;
 use App\Entity\SeatStatus;
 use App\Exception\DuplicateKeyException;
 use App\Exception\ResourceNotFoundException;
+use App\Repository\CategoryRepository;
 use App\Repository\ChartRepository;
 use App\Repository\EventRepository;
 use App\Repository\EventSeatRepository;
 use Doctrine\ORM\EntityManagerInterface;
-use Symfony\Component\Uid\Uuid;
+use Symfony\Component\Mercure\HubInterface;
+use Symfony\Component\Mercure\Update;
+
 
 class EventService
 {
@@ -25,7 +27,10 @@ class EventService
         private EventRepository $eventRepository,
         private ChartRepository $chartRepository,
         private EventSeatRepository $eventSeatRepository,
+        private CategoryRepository $categoryRepository,
         private EntityManagerInterface $em,
+        private HubInterface $hub,
+        private string $mercurePublicUrl = '',
     ) {
     }
 
@@ -59,6 +64,11 @@ class EventService
     {
         $events = $this->eventRepository->findAll();
         return array_map(fn(Event $event) => $this->toResponse($event), $events);
+    }
+
+    public function findByIdentifier(string $identifier): ?Event
+    {
+        return $this->eventRepository->findByIdentifier($identifier);
     }
 
     public function findById(string $id): EventDetailResponse
@@ -130,6 +140,39 @@ class EventService
         return $this->toResponse($event);
     }
 
+    public function bulkUpdateSeatStatus(string $eventId, array $seatKeys, string $status): void
+    {
+        if (empty($seatKeys)) return;
+        $seatStatus = SeatStatus::from($status);
+        $event = $this->eventRepository->find($eventId);
+        if (!$event) throw new ResourceNotFoundException('Event not found');
+        $seats = $this->eventSeatRepository->findByEventIdAndSeatKeyIn($event->getId(), $seatKeys);
+        $ids = array_map(fn(EventSeat $s) => $s->getId(), $seats);
+        if (!empty($ids)) {
+            $this->eventSeatRepository->updateStatusByIds($ids, $seatStatus);
+        }
+        // Create missing seats
+        $existingKeys = array_map(fn(EventSeat $s) => $s->getSeatKey(), $seats);
+        foreach (array_diff($seatKeys, $existingKeys) as $key) {
+            $seat = new EventSeat();
+            $seat->setEvent($event);
+            $seat->setSeatKey($key);
+            $seat->setStatus($seatStatus);
+            $this->em->persist($seat);
+        }
+        $this->em->flush();
+
+        try {
+            $this->hub->publish(new Update(
+                "event/{$eventId}/seats",
+                json_encode(['seatKeys' => $seatKeys, 'status' => $status]),
+            ));
+        } catch (\Throwable $e) {
+            // Ne pas bloquer la réponse si Mercure est indisponible
+            error_log('[Mercure] Failed to publish: ' . $e->getMessage());
+        }
+    }
+
     private function initializeSeats(Event $event, Chart $chart): void
     {
         $objects = $chart->getObjects();
@@ -139,26 +182,131 @@ class EventService
     private function createSeatsFromObjects(Event $event, array $objects): void
     {
         foreach ($objects as $object) {
-            if ($object->type === 'seat') {
-                $seat = new EventSeat();
-                $seat->setEvent($event);
-                $seat->setSeatKey($object->key);
-                $seat->setStatus(SeatStatus::AVAILABLE);
-                $this->em->persist($seat);
-            } elseif ($object->type === 'section' || $object->type === 'row') {
-                if (!empty($object->children)) {
-                    $this->createSeatsFromObjects($event, $object->children);
+            $internalType = is_array($object) ? ($object['_type'] ?? null) : ($object->_type ?? null);
+            $type = is_array($object) ? ($object['type'] ?? null) : ($object->type ?? null);
+            $key  = is_array($object) ? ($object['key']  ?? null) : ($object->key  ?? null);
+
+            // Bloc de sièges nominatifs (format BO admin)
+            if ($internalType === 'seatRow') {
+                $section  = is_array($object) ? ($object['section']  ?? $object['label'] ?? $key ?? 'S') : ($object->section ?? $object->label ?? $key ?? 'S');
+                $rows     = is_array($object) ? ($object['rows']     ?? 1) : ($object->rows ?? 1);
+                $cols     = is_array($object) ? ($object['cols']     ?? 1) : ($object->cols ?? 1);
+                $rowFmt   = is_array($object) ? ($object['rowFormat']      ?? 'A-Z') : ($object->rowFormat ?? 'A-Z');
+                $rowDir   = is_array($object) ? ($object['rowDirection']   ?? 'normal') : ($object->rowDirection ?? 'normal');
+                $colFmt   = is_array($object) ? ($object['colFormat']      ?? '1-9') : ($object->colFormat ?? '1-9');
+                $colDir   = is_array($object) ? ($object['colDirection']   ?? 'normal') : ($object->colDirection ?? 'normal');
+                $disabled = is_array($object) ? ($object['disabledSeats'] ?? []) : ($object->disabledSeats ?? []);
+
+                for ($r = 0; $r < $rows; $r++) {
+                    for ($c = 0; $c < $cols; $c++) {
+                        $posKey = "{$r}-{$c}";
+                        if (in_array($posKey, $disabled)) continue;
+                        $rowLabel = $this->axisLabel($r, $rows, $rowFmt, $rowDir);
+                        $colLabel = $this->axisLabel($c, $cols, $colFmt, $colDir);
+                        $seatKey  = "{$section}-{$rowLabel}-{$colLabel}";
+                        $seat = new EventSeat();
+                        $seat->setEvent($event);
+                        $seat->setSeatKey($seatKey);
+                        $seat->setStatus(SeatStatus::AVAILABLE);
+                        $this->em->persist($seat);
+                    }
                 }
-            } elseif ($object->type === 'table' && $object->seatCount) {
-                for ($i = 1; $i <= $object->seatCount; $i++) {
+                continue;
+            }
+
+            // Section de tables (plusieurs tables dans une section)
+            if ($internalType === 'tableSection') {
+                $section     = is_array($object) ? ($object['section'] ?? $object['label'] ?? $key ?? 'TS') : ($object->section ?? $object->label ?? $key ?? 'TS');
+                $tableCount  = (is_array($object) ? ($object['tableCount'] ?? 3) : ($object->tableCount ?? 3))
+                             * (is_array($object) ? ($object['tableRows'] ?? 1)  : ($object->tableRows  ?? 1));
+                $seatsPerTable = is_array($object) ? ($object['seatsPerTable'] ?? 6) : ($object->seatsPerTable ?? 6);
+                $disabled    = is_array($object) ? ($object['disabledSeats'] ?? []) : ($object->disabledSeats ?? []);
+                for ($ti = 1; $ti <= $tableCount; $ti++) {
+                    for ($si = 1; $si <= $seatsPerTable; $si++) {
+                        $disabledKey = ($ti - 1) . '-' . ($si - 1);
+                        if (in_array($disabledKey, $disabled)) continue;
+                        $seat = new EventSeat();
+                        $seat->setEvent($event);
+                        $seat->setSeatKey("{$section}-{$ti}-{$si}");
+                        $seat->setStatus(SeatStatus::AVAILABLE);
+                        $this->em->persist($seat);
+                    }
+                }
+                continue;
+            }
+
+            // Table avec sièges autour (format BO admin)
+            if ($internalType === 'tableZone') {
+                $section   = is_array($object) ? ($object['section'] ?? $object['label'] ?? $key ?? 'T') : ($object->section ?? $object->label ?? $key ?? 'T');
+                $seatCount = is_array($object) ? ($object['seatCount'] ?? 6) : ($object->seatCount ?? 6);
+                for ($i = 1; $i <= $seatCount; $i++) {
                     $seat = new EventSeat();
                     $seat->setEvent($event);
-                    $seat->setSeatKey("{$object->key}-{$i}");
+                    $seat->setSeatKey("{$section}-{$i}");
+                    $seat->setStatus(SeatStatus::AVAILABLE);
+                    $this->em->persist($seat);
+                }
+                continue;
+            }
+
+            // Formats legacy
+            if ($type === 'seat') {
+                $seat = new EventSeat();
+                $seat->setEvent($event);
+                $seat->setSeatKey($key);
+                $seat->setStatus(SeatStatus::AVAILABLE);
+                $this->em->persist($seat);
+            } elseif ($type === 'section' || $type === 'row') {
+                $children = is_array($object) ? ($object['children'] ?? []) : ($object->children ?? []);
+                if (!empty($children)) {
+                    $this->createSeatsFromObjects($event, $children);
+                }
+            } elseif ($type === 'table') {
+                $seatCount = is_array($object) ? ($object['seatCount'] ?? 0) : ($object->seatCount ?? 0);
+                for ($i = 1; $i <= $seatCount; $i++) {
+                    $seat = new EventSeat();
+                    $seat->setEvent($event);
+                    $seat->setSeatKey("{$key}-{$i}");
                     $seat->setStatus(SeatStatus::AVAILABLE);
                     $this->em->persist($seat);
                 }
             }
         }
+    }
+
+    private function axisLabel(int $index, int $total, string $format, string $direction): string
+    {
+        $i = $direction === 'reversed' ? max(0, $total - 1 - $index) : $index;
+        return match ($format) {
+            'A-Z'  => $this->toLetters($i, true),
+            'a-z'  => $this->toLetters($i, false),
+            'I-X'  => $this->toRoman($i),
+            default => (string) ($i + 1),
+        };
+    }
+
+    private function toLetters(int $n, bool $upper): string
+    {
+        $label = '';
+        $x = $n;
+        do {
+            $char = chr(($upper ? 65 : 97) + ($x % 26));
+            $label = $char . $label;
+            $x = (int) floor($x / 26) - 1;
+        } while ($x >= 0);
+        return $label;
+    }
+
+    private function toRoman(int $n): string
+    {
+        $num = $n + 1;
+        $result = '';
+        $map = [[1000,'M'],[900,'CM'],[500,'D'],[400,'CD'],[100,'C'],[90,'XC'],
+                 [50,'L'],[40,'XL'],[10,'X'],[9,'IX'],[5,'V'],[4,'IV'],[1,'I']];
+        foreach ($map as [$value, $symbol]) {
+            while ($num >= $value) { $result .= $symbol; $num -= $value; }
+        }
+        return $result ?: (string)($n + 1);
     }
 
     private function toResponse(Event $event): EventResponse
@@ -177,21 +325,31 @@ class EventService
     {
         $seats = $this->eventSeatRepository->findByEventId($event->getId());
         $seatDtos = array_map(fn(EventSeat $seat) =>
-            new EventSeatStatusDto($seat->getSeatKey(), $seat->getStatus()->value),
+            new EventSeatStatusDto($seat->getSeatKey(), $seat->getStatus()->value, $seat->getHoldToken()),
             $seats
         );
 
-        $chartObjects = $event->getChart()?->getObjectsJson() ?? [];
+        $chart = $event->getChart();
+
+        $categories = [];
+        if ($chart) {
+            foreach ($this->categoryRepository->findAllByChart($chart) as $cat) {
+                $categories[] = ['id' => (string)$cat->getId(), 'name' => $cat->getName(), 'color' => $cat->getColor()];
+            }
+        }
 
         return new EventDetailResponse(
             $event->getId(),
             $event->getTitle(),
             $event->getIdentifier(),
-            $event->getChart()?->getId(),
-            $event->getChart()?->getName(),
+            $chart?->getId(),
+            $chart?->getName(),
             $event->getCreatedAt(),
             $seatDtos,
-            $chartObjects,
+            $chart?->getObjectsJson() ?? [],
+            $chart?->getPublishedSnapshot(),
+            $categories,
+            $this->mercurePublicUrl ?: null,
         );
     }
 }

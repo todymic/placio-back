@@ -15,6 +15,9 @@ class EventDetailResponse
         public ?\DateTimeImmutable $createdAt = null,
         public array $seats = [],
         public array $chartObjects = [],
+        public ?array $publishedSnapshot = null,
+        public array $categories = [],
+        public ?string $mercurePublicUrl = null,
     ) {
     }
 }
