@@ -604,8 +604,12 @@
         s.addEventListener('pointerdown', () => { this._didDrag=false; });
         s.addEventListener('pointerup', (e) => {
           e.stopPropagation();
-          this._onPointerUp();   // reset _dragging before any selection logic
+          this._onPointerUp();
           this._onSeatClick(key, planStatus, s);
+          // Refresh tooltip immediately so "Sélectionné" state shows without needing a re-hover
+          if (!this._didDrag && this._zoom >= 1.0 && planStatus !== 'disabled') {
+            this._showTooltip(s, {...tipInfo, key, planStatus});
+          }
         });
       }
       return s;
