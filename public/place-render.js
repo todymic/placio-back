@@ -110,6 +110,7 @@
     // ── public ──────────────────────────────────────────────────────────────────
 
     render() {
+      this._injectBounceStyle();
       this._buildMaps();
       this._setupDOM();
       this._drawAll();
@@ -160,6 +161,24 @@
     _bookingStatus(key) { return this._statusMap[key] || 'available'; }
 
     // ── DOM setup ───────────────────────────────────────────────────────────────
+
+    _injectBounceStyle() {
+      if (document.getElementById('pr-bounce-style')) return;
+      const s = document.createElement('style');
+      s.id = 'pr-bounce-style';
+      s.textContent = `
+        @keyframes pr-bounce {
+          0%   { transform: scale(1); }
+          30%  { transform: scale(1.32); }
+          55%  { transform: scale(0.88); }
+          75%  { transform: scale(1.12); }
+          90%  { transform: scale(0.96); }
+          100% { transform: scale(1); }
+        }
+        .pr-bounce { animation: pr-bounce 0.38s cubic-bezier(0.36,0.07,0.19,0.97) both; }
+      `;
+      document.head.appendChild(s);
+    }
 
     _setupDOM() {
       const root = this._root;
@@ -528,6 +547,10 @@
       }
       this._refreshColors();
       if (this._onSelectionChange) this._onSelectionChange();
+      // Bounce animation
+      seatEl.classList.remove('pr-bounce');
+      void seatEl.offsetWidth; // force reflow to restart animation
+      seatEl.classList.add('pr-bounce');
     }
 
     _setSeatContent(e, selected, label) {
