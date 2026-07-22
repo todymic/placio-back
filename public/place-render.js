@@ -485,8 +485,8 @@
         bg='#d1d5db'; fg='#6b7280'; border='1px solid #9ca3af';
       } else if (sel) {
         bg=color; fg='#fff';
-        // white gap (3px) between fill and outer colored ring — gap shrinks on hover → fill grows
-        boxShadow='0 0 0 3px rgba(255,255,255,0.9), 0 0 0 5px '+color;
+        // outer ring fixed + inset white painted over the blue fill; on hover inset shrinks → blue fill grows
+        boxShadow='0 0 0 2px '+color+', inset 0 0 0 3px rgba(255,255,255,0.9)';
       } else {
         bg=color; fg='#fff';
       }
@@ -578,7 +578,7 @@
         padding:shape==='rounded' ? '0 4px' : '0',
         borderRadius: shape==='round' ? '50%' : shape==='rounded' ? '10px' : '4px',
         visibility:planStatus==='deleted' ? 'hidden' : 'visible',
-        boxShadow: this._selected.has(key) ? '0 0 0 3px rgba(255,255,255,0.9), 0 0 0 5px '+this._catColor(catId) : 'none',
+        boxShadow: this._selected.has(key) ? '0 0 0 2px '+this._catColor(catId)+', inset 0 0 0 3px rgba(255,255,255,0.9)' : 'none',
       });
       const displayLabel = (size>=14 && planStatus!=='deleted') ? labelText : '';
       s.dataset.sk     = key;
@@ -592,8 +592,8 @@
           if (planStatus!=='disabled') {
             this._showTooltip(s, {...tipInfo, key, planStatus});
             if (this._selected.has(key)) {
-              // white gap shrinks → inner fill grows; outer colored ring stays fixed
-              s.style.boxShadow = '0 0 0 1px rgba(255,255,255,0.9), 0 0 0 5px '+this._catColor(catId);
+              // inset white shrinks → blue fill inside grows; outer ring stays fixed
+              s.style.boxShadow = '0 0 0 2px '+this._catColor(catId)+', inset 0 0 0 1px rgba(255,255,255,0.9)';
             } else if (this._isClickable(key, planStatus)) {
               s.style.filter = 'brightness(1.12)';
             }
@@ -603,7 +603,7 @@
           this._hideTooltip();
           s.style.filter = '';
           if (this._selected.has(key)) {
-            s.style.boxShadow = '0 0 0 3px rgba(255,255,255,0.9), 0 0 0 5px '+this._catColor(catId);
+            s.style.boxShadow = '0 0 0 2px '+this._catColor(catId)+', inset 0 0 0 3px rgba(255,255,255,0.9)';
           }
         });
         s.addEventListener('pointerdown', () => { this._didDrag=false; });
