@@ -593,7 +593,7 @@
         position:'relative',
         display:'flex', alignItems:'center', justifyContent:'center',
         fontWeight:'700', lineHeight:'1', userSelect:'none', boxSizing:'border-box',
-        transition:'box-shadow 0.18s ease, filter 0.1s',
+        transition:'filter 0.1s',
         background:bg, color:fg, border,
         cursor:this._cursor(key, planStatus),
         fontSize:fs+'px',
