@@ -486,7 +486,7 @@
       } else if (sel) {
         bg=color; fg='#fff';
         // outer ring fixed + inset white painted over the blue fill; on hover inset shrinks → blue fill grows
-        boxShadow='0 0 0 2px '+color+', inset 0 0 0 3px rgba(255,255,255,0.9)';
+        boxShadow=color+' 0px 0px 0px 1.5px, rgba(255,255,255,0.9) 0px 0px 0px 2px inset';
       } else {
         bg=color; fg='#fff';
       }
@@ -570,7 +570,7 @@
         position:'relative',
         display:'flex', alignItems:'center', justifyContent:'center',
         fontWeight:'700', lineHeight:'1', userSelect:'none', boxSizing:'border-box',
-        transition:'filter 0.1s',
+        transition:'box-shadow 0.18s ease, filter 0.1s',
         background:bg, color:fg, border,
         cursor:this._cursor(key, planStatus),
         fontSize:fs+'px',
@@ -578,7 +578,7 @@
         padding:shape==='rounded' ? '0 4px' : '0',
         borderRadius: shape==='round' ? '50%' : shape==='rounded' ? '10px' : '4px',
         visibility:planStatus==='deleted' ? 'hidden' : 'visible',
-        boxShadow: this._selected.has(key) ? '0 0 0 2px '+this._catColor(catId)+', inset 0 0 0 3px rgba(255,255,255,0.9)' : 'none',
+        boxShadow: this._selected.has(key) ? this._catColor(catId)+' 0px 0px 0px 1.5px, rgba(255,255,255,0.9) 0px 0px 0px 2px inset' : 'none',
       });
       const displayLabel = (size>=14 && planStatus!=='deleted') ? labelText : '';
       s.dataset.sk     = key;
@@ -593,7 +593,7 @@
             this._showTooltip(s, {...tipInfo, key, planStatus});
             if (this._selected.has(key)) {
               // inset white shrinks → blue fill inside grows; outer ring stays fixed
-              s.style.boxShadow = '0 0 0 2px '+this._catColor(catId)+', inset 0 0 0 1px rgba(255,255,255,0.9)';
+              s.style.boxShadow = this._catColor(catId)+' 0px 0px 0px 1.5px, rgba(255,255,255,0.9) 0px 0px 0px 1px inset';
             } else if (this._isClickable(key, planStatus)) {
               s.style.filter = 'brightness(1.12)';
             }
@@ -603,7 +603,7 @@
           this._hideTooltip();
           s.style.filter = '';
           if (this._selected.has(key)) {
-            s.style.boxShadow = '0 0 0 2px '+this._catColor(catId)+', inset 0 0 0 3px rgba(255,255,255,0.9)';
+            s.style.boxShadow = this._catColor(catId)+' 0px 0px 0px 1.5px, rgba(255,255,255,0.9) 0px 0px 0px 2px inset';
           }
         });
         s.addEventListener('pointerdown', () => { this._didDrag=false; });
