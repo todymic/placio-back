@@ -529,7 +529,7 @@
       if (selected) {
         // SVG checkmark: position:absolute + inset:0 + margin:auto = perfect centering at any size
         // (parent always has position:relative from _makeSeat — never reset it here)
-        e.innerHTML = `<svg viewBox="0 0 12 12" style="position:absolute;inset:0;margin:auto;width:60%;height:60%" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1.5,6 5,9.5 10.5,2.5"/></svg>`;
+        e.innerHTML = `<svg viewBox="0 0 12 12" style="position:absolute;inset:0;margin:auto;width:44%;height:44%" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="1.5,6 5,9.5 10.5,2.5"/></svg>`;
       } else {
         e.textContent = label;
       }
@@ -587,8 +587,8 @@
           if (planStatus!=='disabled') {
             this._showTooltip(s, {...tipInfo, key, planStatus});
             if (this._selected.has(key)) {
-              // shrink ring on hover
-              s.style.boxShadow = '0 0 0 1.5px rgba(255,255,255,0.92), 0 0 0 3px '+this._catColor(catId);
+              // inner white ring shrinks → fill appears to expand; outer ring stays fixed
+              s.style.boxShadow = '0 0 0 1px rgba(255,255,255,0.92), 0 0 0 4.5px '+this._catColor(catId);
             } else if (this._isClickable(key, planStatus)) {
               s.style.filter = 'brightness(1.12)';
             }
