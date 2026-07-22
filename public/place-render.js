@@ -163,21 +163,12 @@
     // ── DOM setup ───────────────────────────────────────────────────────────────
 
     _injectBounceStyle() {
-      if (document.getElementById('pr-bounce-style')) return;
-      const s = document.createElement('style');
-      s.id = 'pr-bounce-style';
-      s.textContent = `
-        @keyframes pr-bounce {
-          0%   { transform: scale(1); }
-          30%  { transform: scale(1.32); }
-          55%  { transform: scale(0.88); }
-          75%  { transform: scale(1.12); }
-          90%  { transform: scale(0.96); }
-          100% { transform: scale(1); }
-        }
-        .pr-bounce { animation: pr-bounce 0.38s cubic-bezier(0.36,0.07,0.19,0.97) both; }
-      `;
-      document.head.appendChild(s);
+      if (document.getElementById('pr-animate-css')) return;
+      const l = document.createElement('link');
+      l.id   = 'pr-animate-css';
+      l.rel  = 'stylesheet';
+      l.href = 'https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css';
+      document.head.appendChild(l);
     }
 
     _setupDOM() {
@@ -547,10 +538,10 @@
       }
       this._refreshColors();
       if (this._onSelectionChange) this._onSelectionChange();
-      // Bounce animation
-      seatEl.classList.remove('pr-bounce');
-      void seatEl.offsetWidth; // force reflow to restart animation
-      seatEl.classList.add('pr-bounce');
+      // Bounce animation via animate.css
+      seatEl.classList.remove('animate__animated', 'animate__bounceIn');
+      void seatEl.offsetWidth;
+      seatEl.classList.add('animate__animated', 'animate__bounceIn');
     }
 
     _setSeatContent(e, selected, label) {
