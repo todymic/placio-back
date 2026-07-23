@@ -253,6 +253,8 @@
     _animateZoom(z2, px2, py2, dur) {
       dur = dur || 340;
       if (this._animFrame) { cancelAnimationFrame(this._animFrame); this._animFrame = null; }
+      // Hide lens during animation: cloneNode(true) every rAF frame = jank
+      if (this._lensWrap) this._lensWrap.innerHTML = '';
       const z1 = this._zoom, px1 = this._panX, py1 = this._panY;
       const t0 = performance.now();
       const tick = (now) => {
@@ -265,11 +267,11 @@
         if (this._mmWrap) this._mmWrap.style.display = this._zoom > 1 ? 'block' : 'none';
         this._updateMinimap();
         this._updateZoomOutBtn();
-        this._updateLens();
         if (t < 1) {
           this._animFrame = requestAnimationFrame(tick);
         } else {
           this._animFrame = null;
+          this._updateLens(); // rebuild lens once, only when animation is complete
         }
       };
       this._animFrame = requestAnimationFrame(tick);
