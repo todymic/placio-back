@@ -817,6 +817,29 @@
       return s;
     }
 
+    // ── section click helper ──────────────────────────────────────────────────────
+
+    _addSectionClick(el) {
+      el.style.cursor = 'pointer';
+      // Stop pointerdown from reaching the viewport drag handler → no accidental drag on sections
+      el.addEventListener('pointerdown', (e) => {
+        e.stopPropagation();
+        this._didDrag = false;
+      });
+      el.addEventListener('pointerup', (e) => {
+        e.stopPropagation();
+        this._onPointerUp();
+        if (this._didDrag) return;
+        // Compute canvas-local center of this element
+        let ox = 0, oy = 0, cur = el;
+        while (cur && cur !== this._canvas) { ox += cur.offsetLeft||0; oy += cur.offsetTop||0; cur = cur.offsetParent; }
+        // Convert to viewport coordinates (root-relative)
+        const vx = this._panX + (ox + el.offsetWidth/2)  * this._zoom;
+        const vy = this._panY + (oy + el.offsetHeight/2) * this._zoom;
+        this._zoomToLevel(1.5, vx, vy);
+      });
+    }
+
     // ── draw all ──────────────────────────────────────────────────────────────────
 
     _drawAll() {
@@ -845,6 +868,7 @@
       });
       const lbl=css(el('span'),{fontWeight:'700',color,fontSize:(z.labelFontSize||11)+'px'});
       lbl.textContent=z.label||''; wrap.appendChild(lbl);
+      this._addSectionClick(wrap);
       this._canvas.appendChild(wrap);
     }
 
@@ -915,6 +939,7 @@
         }
       }
       card.appendChild(grid); wrapper.appendChild(card);
+      this._addSectionClick(wrapper);
       this._canvas.appendChild(wrapper);
     }
 
@@ -952,6 +977,7 @@
       const dlbl=css(el('span'),{color,fontSize:(t.tableLabelFontSize||12)+'px',fontWeight:'700',textAlign:'center',lineHeight:'1.2',pointerEvents:'none'});
       dlbl.textContent=t.section||this._catName(t.categoryId);
       disc.appendChild(dlbl); wrapper.appendChild(disc);
+      this._addSectionClick(wrapper);
       this._canvas.appendChild(wrapper);
     }
 
@@ -1006,6 +1032,7 @@
         }
       }
 
+      this._addSectionClick(wrapper);
       this._canvas.appendChild(wrapper);
     }
   }
