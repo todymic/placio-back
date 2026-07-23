@@ -101,9 +101,9 @@
       this._ch        = 0;
 
       this._seatSectionMap = {}; // seatKey → section label
-      this._lens      = null;
-      this._lensInner = null;
-      this._lensLabel = null;
+      this._lensWrap  = null;
+      this._minZoom   = 0.1;
+      this._animFrame = null;
 
       // set by widget to refresh checkout bar on selection change
       this._onSelectionChange = null;
@@ -212,6 +212,7 @@
     _fitToContainer() {
       const {w,h,minX,minY} = this._bbox;
       const scale = Math.min(this._cw/w, this._ch/h) * 0.92;
+      this._minZoom = scale * 0.75; // can't zoom out below 75% of initial fit
       this._zoom = scale;
       this._panX = -minX*scale + (this._cw - w*scale)/2;
       this._panY = -minY*scale + (this._ch - h*scale)/2;
@@ -230,8 +231,35 @@
       this._updateLens();
     }
 
+    // ── animation ───────────────────────────────────────────────────────────────
+
+    _animateZoom(z2, px2, py2, dur) {
+      dur = dur || 340;
+      if (this._animFrame) { cancelAnimationFrame(this._animFrame); this._animFrame = null; }
+      const z1 = this._zoom, px1 = this._panX, py1 = this._panY;
+      const t0 = performance.now();
+      const tick = (now) => {
+        let t = Math.min(1, (now - t0) / dur);
+        t = 1 - Math.pow(1 - t, 3); // ease-out cubic
+        this._zoom = z1 + (z2 - z1) * t;
+        this._panX = px1 + (px2 - px1) * t;
+        this._panY = py1 + (py2 - py1) * t;
+        this._canvas.style.transform = `translate(${this._panX}px,${this._panY}px) scale(${this._zoom})`;
+        if (this._zoomBadge) this._zoomBadge.textContent = Math.round(this._zoom*100)+'%';
+        if (this._mmWrap) this._mmWrap.style.display = this._zoom > 1 ? 'block' : 'none';
+        this._updateMinimap();
+        this._updateLens();
+        if (t < 1) {
+          this._animFrame = requestAnimationFrame(tick);
+        } else {
+          this._animFrame = null;
+        }
+      };
+      this._animFrame = requestAnimationFrame(tick);
+    }
+
     _zoomCenteredOn(cx, cy, ratio) {
-      const nz = Math.max(0.12, Math.min(6, this._zoom*ratio));
+      const nz = Math.max(this._minZoom, Math.min(6, this._zoom*ratio));
       const r  = nz/this._zoom;
       this._panX = cx - r*(cx - this._panX);
       this._panY = cy - r*(cy - this._panY);
@@ -240,13 +268,29 @@
       this._updateMinimap();
     }
 
+    _zoomCenteredOnSmooth(cx, cy, ratio) {
+      const nz  = Math.max(this._minZoom, Math.min(6, this._zoom * ratio));
+      const r   = nz / this._zoom;
+      const px2 = cx - r * (cx - this._panX);
+      const py2 = cy - r * (cy - this._panY);
+      this._animateZoom(nz, px2, py2);
+    }
+
     _zoomToLevel(targetZoom, cx, cy) {
-      const r = targetZoom/this._zoom;
-      this._panX = cx - r*(cx - this._panX);
-      this._panY = cy - r*(cy - this._panY);
-      this._zoom = targetZoom;
-      this._applyTransform(true);
-      this._updateMinimap();
+      const z2  = Math.max(this._minZoom, Math.min(6, targetZoom));
+      const r   = z2 / this._zoom;
+      const px2 = cx - r * (cx - this._panX);
+      const py2 = cy - r * (cy - this._panY);
+      this._animateZoom(z2, px2, py2, 280);
+    }
+
+    // Zoom to fit a canvas-local bounding box in the viewport
+    _zoomToFitBbox(bx, by, bw, bh) {
+      const pad   = 60;
+      const z2    = Math.min((this._cw - pad*2) / Math.max(bw, 1), (this._ch - pad*2) / Math.max(bh, 1), 5);
+      const px2   = -(bx + bw/2) * z2 + this._cw / 2;
+      const py2   = -(by + bh/2) * z2 + this._ch / 2;
+      this._animateZoom(Math.max(this._minZoom, z2), px2, py2, 420);
     }
 
     _onWheel(e) {
@@ -316,9 +360,9 @@
       badge.addEventListener('click', () => { this._fitToContainer(); this._updateMinimap(); });
       this._zoomBadge = badge;
 
-      wrap.appendChild(mkBtn('−','Dézoomer', () => this._zoomCenteredOn(this._cw/2,this._ch/2, 1/1.25)));
+      wrap.appendChild(mkBtn('−','Dézoomer', () => this._zoomCenteredOnSmooth(this._cw/2,this._ch/2, 1/1.25)));
       wrap.appendChild(badge);
-      wrap.appendChild(mkBtn('+','Zoomer',   () => this._zoomCenteredOn(this._cw/2,this._ch/2, 1.25)));
+      wrap.appendChild(mkBtn('+','Zoomer',   () => this._zoomCenteredOnSmooth(this._cw/2,this._ch/2, 1.25)));
 
       const sep = css(el('div'), {width:'1px',height:'20px',background:'#e2e8f0',margin:'0 2px'});
       wrap.appendChild(sep);
@@ -490,9 +534,11 @@
 
     _buildLens(root) {
       // Single container; circles rebuilt on each update
+      // pointerEvents:'none' on container so only circle elements receive clicks
       const wrap = css(el('div'), { position:'absolute', inset:'0', pointerEvents:'none', zIndex:'100' });
       this._lensWrap = wrap;
       root.appendChild(wrap);
+      // circles inside use pointerEvents:'auto' individually
     }
 
     // Called on selection change and zoom change
@@ -547,7 +593,7 @@
 
       const catColor = this._catColor(this._seatCatMap[selectedKeys[0]]);
 
-      // Circle container
+      // Circle container — clickable to zoom on this section
       const circle = css(el('div'), {
         position:'absolute',
         left: (cx - R) + 'px', top: (cy - R) + 'px',
@@ -556,6 +602,12 @@
         border: `3px solid ${catColor}`,
         boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
         background: 'rgba(255,255,255,0.9)',
+        cursor: 'pointer',
+        pointerEvents: 'auto',
+      });
+      circle.addEventListener('click', () => {
+        const bbox = this._sectionCanvasBbox(section);
+        if (bbox) this._zoomToFitBbox(bbox.x, bbox.y, bbox.w, bbox.h);
       });
 
       // Clone canvas and align it exactly under the circle
@@ -607,6 +659,18 @@
       });
       lbl.textContent = section;
       this._lensWrap.appendChild(lbl);
+    }
+
+    _sectionCanvasBbox(section) {
+      let bx0=Infinity,by0=Infinity,bx1=-Infinity,by1=-Infinity;
+      this._canvas.querySelectorAll('[data-sk]').forEach(e => {
+        if (this._seatSectionMap[e.dataset.sk] !== section) return;
+        let x=0, y=0, cur=e;
+        while (cur && cur !== this._canvas) { x+=cur.offsetLeft||0; y+=cur.offsetTop||0; cur=cur.offsetParent; }
+        bx0=Math.min(bx0,x); by0=Math.min(by0,y);
+        bx1=Math.max(bx1,x+(e.offsetWidth||22)); by1=Math.max(by1,y+(e.offsetHeight||22));
+      });
+      return isFinite(bx0) ? {x:bx0, y:by0, w:bx1-bx0, h:by1-by0} : null;
     }
 
     _hideLens() {
