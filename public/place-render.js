@@ -182,7 +182,7 @@
       css(root, {
         position:'relative', overflow:'hidden', fontFamily:'system-ui,sans-serif',
         background:'#ffffff', userSelect:'none',
-        width:root.style.width||'100%', height:root.style.height||'500px',
+        width:root.style.width||'100%', height:root.style.height||'100%',
       });
       this._cw = root.clientWidth  || 600;
       this._ch = root.clientHeight || 500;
@@ -210,21 +210,27 @@
 
     // ── zoom / pan ──────────────────────────────────────────────────────────────
 
+    _overviewZoom() {
+      // Initial zoom = min(fit-to-container, 50%) so the plan always fills the div
+      const {w, h} = this._bbox;
+      const fit = Math.min(this._cw / w, this._ch / h) * 0.92;
+      return Math.min(fit, 0.5);
+    }
+
     _fitToContainer() {
       const {w,h,minX,minY} = this._bbox;
-      const scale = 0.5; // always start at 50%
-      this._minZoom = 0.5;
+      const scale = this._overviewZoom();
+      this._minZoom = scale;
       this._zoom = scale;
       this._panX = -minX*scale + (this._cw - w*scale)/2;
       this._panY = -minY*scale + (this._ch - h*scale)/2;
       this._applyTransform();
     }
 
-    // Animate back to 50% overview centered on the plan
+    // Animate back to overview zoom centered on the plan
     _zoomToFit50(dur) {
-      const {w,h,minX} = this._bbox;
-      const {minY} = this._bbox;
-      const scale = 0.5;
+      const {w,h,minX,minY} = this._bbox;
+      const scale = this._overviewZoom();
       const px2 = -minX*scale + (this._cw - w*scale)/2;
       const py2 = -minY*scale + (this._ch - h*scale)/2;
       this._animateZoom(scale, px2, py2, dur || 380);

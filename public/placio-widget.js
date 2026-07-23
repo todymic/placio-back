@@ -78,7 +78,7 @@
         fontFamily: 'system-ui, sans-serif',
         background: '#f8fafc',
         width:  container.style.width  || '100%',
-        height: container.style.height || '500px',
+        height: container.style.height || '100%',
       });
 
       // Loading indicator
