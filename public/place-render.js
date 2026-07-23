@@ -100,6 +100,11 @@
       this._cw        = 0;
       this._ch        = 0;
 
+      this._seatSectionMap = {}; // seatKey → section label
+      this._lens      = null;
+      this._lensInner = null;
+      this._lensLabel = null;
+
       // set by widget to refresh checkout bar on selection change
       this._onSelectionChange = null;
 
@@ -194,6 +199,7 @@
       this._tooltip = this._buildTooltip(root);
       this._buildControls(root);
       this._buildMinimap(root);
+      this._buildLens(root);
 
       vp.addEventListener('wheel',       this._onWheel.bind(this), {passive:false});
       vp.addEventListener('pointerdown', this._onPointerDown.bind(this));
@@ -479,6 +485,82 @@
     }
     _hideTooltip() { this._tooltip.style.display='none'; }
 
+    // ── microscope lens ──────────────────────────────────────────────────────────
+
+    _buildLens(root) {
+      const D = 260;
+      const lens = css(el('div'), {
+        position: 'absolute', width: D+'px', height: D+'px',
+        borderRadius: '50%', overflow: 'hidden',
+        border: '3px solid rgba(255,255,255,0.95)',
+        boxShadow: '0 0 0 1px rgba(0,0,0,0.13), 0 16px 48px rgba(0,0,0,0.28)',
+        zIndex: '100', pointerEvents: 'none', display: 'none',
+        top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
+        background: '#fff',
+      });
+      const inner = css(el('div'), { position: 'absolute', inset: '0', overflow: 'hidden' });
+      lens.appendChild(inner);
+
+      const label = css(el('div'), {
+        position: 'absolute', bottom: '18px', left: '0', right: '0',
+        textAlign: 'center', zIndex: '3', pointerEvents: 'none',
+      });
+      lens.appendChild(label);
+
+      this._lens = lens;
+      this._lensInner = inner;
+      this._lensLabel = label;
+      root.appendChild(lens);
+    }
+
+    _showLens(section) {
+      if (!this._lens) return;
+      const D = 260, R = D / 2;
+
+      const canvasRect = this._canvas.getBoundingClientRect();
+
+      // All seats belonging to this section
+      const sectionSeats = [...this._canvas.querySelectorAll('[data-sk]')].filter(e =>
+        this._seatSectionMap[e.dataset.sk] === section
+      );
+      if (!sectionSeats.length) return;
+
+      // Compute bounding box of section seats in canvas-local coordinates
+      let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
+      for (const t of sectionSeats) {
+        const r = t.getBoundingClientRect();
+        const lx = (r.left - canvasRect.left) / this._zoom;
+        const ly = (r.top  - canvasRect.top)  / this._zoom;
+        const rx = lx + r.width  / this._zoom;
+        const ry = ly + r.height / this._zoom;
+        bx0 = Math.min(bx0, lx); by0 = Math.min(by0, ly);
+        bx1 = Math.max(bx1, rx); by1 = Math.max(by1, ry);
+      }
+      const bw = bx1 - bx0, bh = by1 - by0;
+      const pad = 28;
+      const magZoom = Math.min((D - pad*2) / Math.max(bw, 1), (D - pad*2) / Math.max(bh, 1), 5.0);
+      const cx = (bx0 + bx1) / 2;
+      const cy = (by0 + by1) / 2;
+
+      // Clone canvas (no event listeners)
+      this._lensInner.innerHTML = '';
+      const clone = this._canvas.cloneNode(true);
+      clone.style.pointerEvents  = 'none';
+      clone.style.transition     = 'none';
+      clone.style.transformOrigin = '0 0';
+      clone.style.transform = `translate(${R - cx * magZoom}px,${R - cy * magZoom}px) scale(${magZoom})`;
+      this._lensInner.appendChild(clone);
+
+      const selCount = sectionSeats.filter(e => this._selected.has(e.dataset.sk)).length;
+      this._lensLabel.innerHTML = `<span style="display:inline-block;background:rgba(255,255,255,0.92);border-radius:999px;padding:3px 14px;font-size:11px;font-weight:700;color:#374151;box-shadow:0 1px 6px rgba(0,0,0,0.12)">${section}${selCount ? ` · ${selCount} sélectionné${selCount>1?'s':''}` : ''}</span>`;
+
+      this._lens.style.display = 'block';
+    }
+
+    _hideLens() {
+      if (this._lens) this._lens.style.display = 'none';
+    }
+
     // ── seat styles ───────────────────────────────────────────────────────────────
     // planStatus: 'enabled' | 'disabled' | 'deleted'
     // bookingStatus: 'available' | 'booked' | 'hold' | 'canceled'
@@ -575,7 +657,8 @@
     // ── seat element factory ──────────────────────────────────────────────────────
 
     _makeSeat(key, catId, planStatus, size, shape, labelText, tipInfo) {
-      this._seatCatMap[key] = catId;
+      this._seatCatMap[key]     = catId;
+      this._seatSectionMap[key] = tipInfo.section || '';
       const {bg,fg,border} = this._seatStyle(key, catId, planStatus);
       // Legible font even at low zoom — scale up minimum for small seats
       const fs = Math.max(10, Math.floor(size * 0.55));
@@ -604,10 +687,11 @@
 
       if (planStatus!=='deleted') {
         s.addEventListener('mouseenter', () => {
-          if (planStatus!=='disabled') {
+          if (this._zoom < 0.5) {
+            this._showLens(tipInfo.section || '');
+          } else if (planStatus !== 'disabled') {
             this._showTooltip(s, {...tipInfo, key, planStatus});
             if (this._selected.has(key)) {
-              // inset white shrinks → blue fill inside grows; outer ring stays fixed
               s.style.boxShadow = this._catColor(catId)+' 0px 0px 0px 1.5px, rgba(255,255,255,0.9) 0px 0px 0px 1px inset';
             } else if (this._isClickable(key, planStatus)) {
               s.style.filter = 'brightness(1.12)';
@@ -615,6 +699,7 @@
           }
         });
         s.addEventListener('mouseleave', () => {
+          this._hideLens();
           this._hideTooltip();
           s.style.filter = '';
           if (this._selected.has(key)) {
