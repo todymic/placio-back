@@ -197,6 +197,7 @@
       this._canvas = canvas;
 
       this._tooltip = this._buildTooltip(root);
+      this._buildFullscreenBtn(root);
       this._buildControls(root);
       this._buildMinimap(root);
       this._buildLens(root);
@@ -332,6 +333,54 @@
       if (!this._dragging) return;
       this._dragging = false;
       this._viewport.style.cursor = 'grab';
+    }
+
+    // ── fullscreen button (top-right) ────────────────────────────────────────────
+
+    _buildFullscreenBtn(root) {
+      const btn = css(el('button'), {
+        position:'absolute', top:'10px', right:'10px', zIndex:'110',
+        display:'inline-flex', alignItems:'center', gap:'6px',
+        padding:'6px 12px', border:'none', borderRadius:'999px',
+        background:'rgba(255,255,255,0.92)', backdropFilter:'blur(4px)',
+        boxShadow:'0 1px 6px rgba(0,0,0,0.10), 0 0 0 1px rgba(0,0,0,0.07)',
+        cursor:'pointer', fontSize:'13px', fontWeight:'500', color:'#1f2937',
+        transition:'background 0.15s',
+        whiteSpace:'nowrap',
+      });
+      const iconExpand = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>`;
+      const iconShrink = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="10" y1="14" x2="3" y2="21"/><line x1="21" y1="3" x2="14" y2="10"/></svg>`;
+      const span = el('span');
+      const setFs = (inFs) => {
+        btn.innerHTML = '';
+        const ic = el('span'); ic.innerHTML = inFs ? iconShrink : iconExpand;
+        ic.style.display = 'flex';
+        btn.appendChild(ic);
+        span.textContent = inFs ? 'Quitter le plein écran' : 'Plein écran';
+        btn.appendChild(span);
+      };
+      setFs(false);
+      btn.addEventListener('mouseenter', () => btn.style.background = '#ffffff');
+      btn.addEventListener('mouseleave', () => btn.style.background = 'rgba(255,255,255,0.92)');
+      btn.addEventListener('click', () => {
+        if (document.fullscreenElement === root) {
+          document.exitFullscreen?.();
+        } else {
+          root.requestFullscreen?.().catch(() => {});
+        }
+      });
+      document.addEventListener('fullscreenchange', () => {
+        const inFs = document.fullscreenElement === root;
+        setFs(inFs);
+        if (inFs) {
+          this._cw = root.clientWidth; this._ch = root.clientHeight;
+        } else {
+          this._cw = root.clientWidth; this._ch = root.clientHeight;
+        }
+        this._fitToContainer();
+        this._updateMinimap();
+      });
+      root.appendChild(btn);
     }
 
     // ── zoom-out button (bottom-left, visible when zoom > 50%) ──────────────────
