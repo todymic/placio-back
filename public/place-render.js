@@ -662,6 +662,11 @@
       clone.style.transform =
         `translate(${this._panX - (cx - R)}px,${this._panY - (cy - R)}px) scale(${this._zoom})`;
 
+      // Hide wrapper containers of other sections (prevents background bleed)
+      clone.querySelectorAll('[data-section]').forEach(e => {
+        if (e.dataset.section !== section) e.style.visibility = 'hidden';
+      });
+
       // Style seats inside the clone
       clone.querySelectorAll('[data-sk]').forEach(e => {
         e.classList.remove('animate__animated','animate__pulse');
@@ -669,19 +674,22 @@
         const inSection = this._seatSectionMap[key] === section;
 
         if (selSet.has(key)) {
-          // Selected → keep colour + strong ring
+          // Selected → solid color, bigger, no checkmark icon
           const c = this._catColor(e.dataset.cat);
-          e.style.boxShadow = `${c} 0px 0px 0px 2.5px, rgba(255,255,255,0.9) 0px 0px 0px 3px inset`;
-          e.style.zIndex    = '5';
-        } else if (inSection) {
-          // Same section, not selected → gray
-          e.style.background = '#d1d5db';
-          e.style.color      = 'transparent';
+          e.style.background = c;
+          e.style.boxShadow  = `0 0 0 2.5px ${c}, 0 0 0 5px ${rgba(c, 0.25)}`;
           e.style.border     = 'none';
+          e.style.transform  = 'scale(1.3)';
+          e.style.zIndex     = '5';
+          e.innerHTML        = '';
+        } else if (inSection) {
+          // Same section, not selected → light gray
+          e.style.background = '#d1d5db';
           e.style.boxShadow  = 'none';
+          e.style.border     = 'none';
+          e.style.transform  = '';
           e.innerHTML        = '';
         } else {
-          // Other sections → invisible
           e.style.visibility = 'hidden';
         }
       });
@@ -876,7 +884,8 @@
 
     // ── section click helper ──────────────────────────────────────────────────────
 
-    _addSectionClick(el) {
+    _addSectionClick(el, sectionLabel) {
+      if (sectionLabel) el.dataset.section = sectionLabel;
       el.style.cursor = 'pointer';
       // Stop pointerdown from reaching the viewport drag handler → no accidental drag on sections
       el.addEventListener('pointerdown', (e) => {
@@ -925,7 +934,7 @@
       });
       const lbl=css(el('span'),{fontWeight:'700',color,fontSize:(z.labelFontSize||11)+'px'});
       lbl.textContent=z.label||''; wrap.appendChild(lbl);
-      this._addSectionClick(wrap);
+      this._addSectionClick(wrap, z.label||'');
       this._canvas.appendChild(wrap);
     }
 
@@ -996,7 +1005,7 @@
         }
       }
       card.appendChild(grid); wrapper.appendChild(card);
-      this._addSectionClick(wrapper);
+      this._addSectionClick(wrapper, row.section||this._catName(row.categoryId));
       this._canvas.appendChild(wrapper);
     }
 
@@ -1034,7 +1043,7 @@
       const dlbl=css(el('span'),{color,fontSize:(t.tableLabelFontSize||12)+'px',fontWeight:'700',textAlign:'center',lineHeight:'1.2',pointerEvents:'none'});
       dlbl.textContent=t.section||this._catName(t.categoryId);
       disc.appendChild(dlbl); wrapper.appendChild(disc);
-      this._addSectionClick(wrapper);
+      this._addSectionClick(wrapper, t.section||this._catName(t.categoryId));
       this._canvas.appendChild(wrapper);
     }
 
@@ -1089,7 +1098,7 @@
         }
       }
 
-      this._addSectionClick(wrapper);
+      this._addSectionClick(wrapper, ts.section||this._catName(ts.categoryId));
       this._canvas.appendChild(wrapper);
     }
   }
