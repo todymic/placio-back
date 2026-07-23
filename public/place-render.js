@@ -674,12 +674,17 @@
         const inSection = this._seatSectionMap[key] === section;
 
         if (selSet.has(key)) {
-          // Selected → solid color, bigger, no checkmark icon
+          // Selected → solid color, slightly bigger via padding (no scale = no overlap)
           const c = this._catColor(e.dataset.cat);
+          const orig = parseInt(e.style.width) || e.offsetWidth || 15;
+          const bigger = Math.round(orig * 1.18);
           e.style.background = c;
-          e.style.boxShadow  = `0 0 0 2.5px ${c}, 0 0 0 5px ${rgba(c, 0.25)}`;
+          e.style.width      = bigger + 'px';
+          e.style.height     = bigger + 'px';
+          e.style.minWidth   = bigger + 'px';
+          e.style.boxShadow  = `0 0 0 2px rgba(255,255,255,0.8), 0 0 0 4px ${rgba(c, 0.35)}`;
           e.style.border     = 'none';
-          e.style.transform  = 'scale(1.3)';
+          e.style.transform  = '';
           e.style.zIndex     = '5';
           e.innerHTML        = '';
         } else if (inSection) {
