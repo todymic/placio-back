@@ -227,6 +227,7 @@
       this._canvas.style.transform = `translate(${this._panX}px,${this._panY}px) scale(${this._zoom})`;
       if (this._zoomBadge) this._zoomBadge.textContent = Math.round(this._zoom*100)+'%';
       if (this._mmWrap) this._mmWrap.style.display = this._zoom > 1 ? 'block' : 'none';
+      this._updateLens();
     }
 
     _zoomCenteredOn(cx, cy, ratio) {
@@ -488,112 +489,125 @@
     // ── microscope lens ──────────────────────────────────────────────────────────
 
     _buildLens(root) {
-      const D = 260;
+      const D = 220;
       const lens = css(el('div'), {
         position: 'absolute', width: D+'px', height: D+'px',
         borderRadius: '50%', overflow: 'hidden',
-        border: '3px solid rgba(255,255,255,0.95)',
-        boxShadow: '0 0 0 1px rgba(0,0,0,0.13), 0 16px 48px rgba(0,0,0,0.28)',
+        border: '3px solid #9ca3af',
+        boxShadow: '0 8px 32px rgba(0,0,0,0.22)',
         zIndex: '100', pointerEvents: 'none', display: 'none',
-        top: '50%', left: '50%', transform: 'translate(-50%,-50%)',
         background: '#fff',
       });
       const inner = css(el('div'), { position: 'absolute', inset: '0', overflow: 'hidden' });
       lens.appendChild(inner);
 
       const label = css(el('div'), {
-        position: 'absolute', bottom: '18px', left: '0', right: '0',
+        position: 'absolute', bottom: '-28px', left: '0', right: '0',
         textAlign: 'center', zIndex: '3', pointerEvents: 'none',
+        fontSize: '12px', fontWeight: '700',
       });
-      lens.appendChild(label);
 
-      this._lens = lens;
+      this._lens      = lens;
       this._lensInner = inner;
       this._lensLabel = label;
       root.appendChild(lens);
+      root.appendChild(label);
     }
 
-    _showLens(seatEl, section) {
+    // Called on selection change and zoom change
+    _updateLens() {
       if (!this._lens) return;
-      const D = 260, R = D / 2;
+      if (this._zoom > 0.5 || this._selected.size === 0) {
+        this._hideLens(); return;
+      }
 
-      // All seat elements in canvas belonging to this section
-      const allSeats = [...this._canvas.querySelectorAll('[data-sk]')];
-      const sectionSeats = allSeats.filter(e => this._seatSectionMap[e.dataset.sk] === section);
+      // Collect selected seat elements
+      const selectedEls = [...this._canvas.querySelectorAll('[data-sk]')]
+        .filter(e => this._selected.has(e.dataset.sk));
+      if (!selectedEls.length) { this._hideLens(); return; }
 
-      // Use sectionSeats if found, otherwise fall back to hovered seat only
-      const targets = sectionSeats.length ? sectionSeats : [seatEl];
+      const D = 220, R = D / 2;
+      const rootRect = this._root.getBoundingClientRect();
 
-      // Compute bounding box using offsetLeft/offsetTop (canvas-local, unaffected by zoom)
-      // We walk up to the canvas element to get cumulative offset
-      const getCanvasOffset = (el) => {
+      // Viewport centroid of selected seats → position lens there
+      let vx = 0, vy = 0;
+      for (const e of selectedEls) {
+        const r = e.getBoundingClientRect();
+        vx += r.left + r.width  / 2;
+        vy += r.top  + r.height / 2;
+      }
+      vx = vx / selectedEls.length - rootRect.left;
+      vy = vy / selectedEls.length - rootRect.top;
+
+      // Clamp so lens stays inside root
+      const lx = Math.max(R + 4, Math.min(vx, rootRect.width  - R - 4));
+      const ly = Math.max(R + 4, Math.min(vy, rootRect.height - R - 4));
+      this._lens.style.left = lx + 'px';
+      this._lens.style.top  = ly + 'px';
+      this._lensLabel.style.left = (lx - R) + 'px';
+      this._lensLabel.style.top  = (ly + R + 6) + 'px';
+      this._lensLabel.style.width = D + 'px';
+
+      // Border = first selected category color
+      const firstKey   = [...this._selected][0];
+      const catColor   = this._catColor(this._seatCatMap[firstKey]);
+      this._lens.style.border = `3px solid ${catColor}`;
+      this._lensLabel.style.color = catColor;
+
+      // Canvas-local bbox of selected seats via offsetLeft/offsetTop
+      const getOffset = (el) => {
         let x = 0, y = 0, cur = el;
         while (cur && cur !== this._canvas) {
-          x += cur.offsetLeft || 0;
-          y += cur.offsetTop  || 0;
+          x += cur.offsetLeft || 0; y += cur.offsetTop || 0;
           cur = cur.offsetParent;
         }
         return { x, y, w: el.offsetWidth || 22, h: el.offsetHeight || 22 };
       };
 
-      let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
-      for (const t of targets) {
-        const {x, y, w, h} = getCanvasOffset(t);
-        bx0 = Math.min(bx0, x);     by0 = Math.min(by0, y);
-        bx1 = Math.max(bx1, x + w); by1 = Math.max(by1, y + h);
+      let bx0=Infinity,by0=Infinity,bx1=-Infinity,by1=-Infinity;
+      for (const e of selectedEls) {
+        const {x,y,w,h} = getOffset(e);
+        bx0=Math.min(bx0,x); by0=Math.min(by0,y);
+        bx1=Math.max(bx1,x+w); by1=Math.max(by1,y+h);
       }
+      const pad = 28;
+      const bw = Math.max(bx1-bx0, 10), bh = Math.max(by1-by0, 10);
+      const magZoom = Math.min((D-pad*2)/bw, (D-pad*2)/bh, 6.0);
+      const cx = (bx0+bx1)/2, cy = (by0+by1)/2;
 
-      const bw = Math.max(bx1 - bx0, 10);
-      const bh = Math.max(by1 - by0, 10);
-      const pad = 30;
-      const magZoom = Math.min((D - pad*2) / bw, (D - pad*2) / bh, 6.0);
-      const cx = (bx0 + bx1) / 2;
-      const cy = (by0 + by1) / 2;
-
-      // Clone canvas (cloneNode does not copy event listeners)
+      // Clone canvas, gray non-selected, hide other sections' elements
       this._lensInner.innerHTML = '';
       const clone = this._canvas.cloneNode(true);
       clone.style.pointerEvents   = 'none';
       clone.style.transition      = 'none';
       clone.style.transformOrigin = '0 0';
-      clone.style.transform = `translate(${R - cx * magZoom}px,${R - cy * magZoom}px) scale(${magZoom})`;
+      clone.style.transform = `translate(${R - cx*magZoom}px,${R - cy*magZoom}px) scale(${magZoom})`;
 
-      // Gray out non-selected seats; highlight selected ones
-      const selectedKeys = new Set(this._selected);
       clone.querySelectorAll('[data-sk]').forEach(e => {
-        const key = e.dataset.sk;
-        const inSection = this._seatSectionMap[key] === section;
-        if (!inSection) {
-          // Outside this section: hide completely
-          e.style.visibility = 'hidden';
-        } else if (selectedKeys.has(key)) {
-          // Selected: keep color, add strong ring
-          const catColor = this._catColor(e.dataset.cat);
-          e.style.boxShadow = catColor + ' 0px 0px 0px 2px, rgba(255,255,255,0.9) 0px 0px 0px 3px inset';
+        e.classList.remove('animate__animated','animate__pulse');
+        if (this._selected.has(e.dataset.sk)) {
+          const c = this._catColor(e.dataset.cat);
+          e.style.boxShadow = c+' 0px 0px 0px 2px, rgba(255,255,255,0.9) 0px 0px 0px 3px inset';
           e.style.zIndex = '5';
         } else {
-          // Available but not selected: gray
           e.style.background = '#e5e7eb';
           e.style.color      = '#9ca3af';
           e.style.border     = '1px solid #d1d5db';
           e.style.boxShadow  = 'none';
+          e.innerHTML        = '';
         }
-        // Remove animate classes from clone
-        e.classList.remove('animate__animated', 'animate__pulse');
       });
-
       this._lensInner.appendChild(clone);
 
-      const selCount = sectionSeats.filter(e => selectedKeys.has(e.dataset.sk)).length;
-      this._lensLabel.innerHTML = selCount
-        ? `<span style="display:inline-block;background:rgba(255,255,255,0.93);border-radius:999px;padding:3px 14px;font-size:11px;font-weight:700;color:#374151;box-shadow:0 1px 6px rgba(0,0,0,0.12)">${section} · ${selCount} sélectionné${selCount>1?'s':''}</span>`
-        : `<span style="display:inline-block;background:rgba(255,255,255,0.93);border-radius:999px;padding:3px 14px;font-size:11px;font-weight:700;color:#374151;box-shadow:0 1px 6px rgba(0,0,0,0.12)">${section}</span>`;
-
+      const selCount = this._selected.size;
+      this._lensLabel.textContent = `${selCount} sélectionné${selCount>1?'s':''}`;
       this._lens.style.display = 'block';
+      this._lensLabel.style.display = 'block';
     }
 
     _hideLens() {
-      if (this._lens) this._lens.style.display = 'none';
+      if (this._lens) { this._lens.style.display = 'none'; }
+      if (this._lensLabel) { this._lensLabel.style.display = 'none'; }
     }
 
     // ── seat styles ───────────────────────────────────────────────────────────────
@@ -654,6 +668,7 @@
         if (this._onSel) this._onSel(info);
       }
       this._refreshColors();
+      this._updateLens();
       if (this._onSelectionChange) this._onSelectionChange();
       // Bounce animation via animate.css
       seatEl.classList.remove('animate__animated', 'animate__pulse');
@@ -722,9 +737,7 @@
 
       if (planStatus!=='deleted') {
         s.addEventListener('mouseenter', () => {
-          if (this._zoom < 0.5) {
-            this._showLens(s, tipInfo.section || '');
-          } else if (planStatus !== 'disabled') {
+          if (this._zoom >= 0.5 && planStatus !== 'disabled') {
             this._showTooltip(s, {...tipInfo, key, planStatus});
             if (this._selected.has(key)) {
               s.style.boxShadow = this._catColor(catId)+' 0px 0px 0px 1.5px, rgba(255,255,255,0.9) 0px 0px 0px 1px inset';
@@ -734,7 +747,6 @@
           }
         });
         s.addEventListener('mouseleave', () => {
-          this._hideLens();
           this._hideTooltip();
           s.style.filter = '';
           if (this._selected.has(key)) {
