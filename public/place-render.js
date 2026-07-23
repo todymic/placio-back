@@ -513,46 +513,81 @@
       root.appendChild(lens);
     }
 
-    _showLens(section) {
+    _showLens(seatEl, section) {
       if (!this._lens) return;
       const D = 260, R = D / 2;
 
-      const canvasRect = this._canvas.getBoundingClientRect();
+      // All seat elements in canvas belonging to this section
+      const allSeats = [...this._canvas.querySelectorAll('[data-sk]')];
+      const sectionSeats = allSeats.filter(e => this._seatSectionMap[e.dataset.sk] === section);
 
-      // All seats belonging to this section
-      const sectionSeats = [...this._canvas.querySelectorAll('[data-sk]')].filter(e =>
-        this._seatSectionMap[e.dataset.sk] === section
-      );
-      if (!sectionSeats.length) return;
+      // Use sectionSeats if found, otherwise fall back to hovered seat only
+      const targets = sectionSeats.length ? sectionSeats : [seatEl];
 
-      // Compute bounding box of section seats in canvas-local coordinates
+      // Compute bounding box using offsetLeft/offsetTop (canvas-local, unaffected by zoom)
+      // We walk up to the canvas element to get cumulative offset
+      const getCanvasOffset = (el) => {
+        let x = 0, y = 0, cur = el;
+        while (cur && cur !== this._canvas) {
+          x += cur.offsetLeft || 0;
+          y += cur.offsetTop  || 0;
+          cur = cur.offsetParent;
+        }
+        return { x, y, w: el.offsetWidth || 22, h: el.offsetHeight || 22 };
+      };
+
       let bx0 = Infinity, by0 = Infinity, bx1 = -Infinity, by1 = -Infinity;
-      for (const t of sectionSeats) {
-        const r = t.getBoundingClientRect();
-        const lx = (r.left - canvasRect.left) / this._zoom;
-        const ly = (r.top  - canvasRect.top)  / this._zoom;
-        const rx = lx + r.width  / this._zoom;
-        const ry = ly + r.height / this._zoom;
-        bx0 = Math.min(bx0, lx); by0 = Math.min(by0, ly);
-        bx1 = Math.max(bx1, rx); by1 = Math.max(by1, ry);
+      for (const t of targets) {
+        const {x, y, w, h} = getCanvasOffset(t);
+        bx0 = Math.min(bx0, x);     by0 = Math.min(by0, y);
+        bx1 = Math.max(bx1, x + w); by1 = Math.max(by1, y + h);
       }
-      const bw = bx1 - bx0, bh = by1 - by0;
-      const pad = 28;
-      const magZoom = Math.min((D - pad*2) / Math.max(bw, 1), (D - pad*2) / Math.max(bh, 1), 5.0);
+
+      const bw = Math.max(bx1 - bx0, 10);
+      const bh = Math.max(by1 - by0, 10);
+      const pad = 30;
+      const magZoom = Math.min((D - pad*2) / bw, (D - pad*2) / bh, 6.0);
       const cx = (bx0 + bx1) / 2;
       const cy = (by0 + by1) / 2;
 
-      // Clone canvas (no event listeners)
+      // Clone canvas (cloneNode does not copy event listeners)
       this._lensInner.innerHTML = '';
       const clone = this._canvas.cloneNode(true);
-      clone.style.pointerEvents  = 'none';
-      clone.style.transition     = 'none';
+      clone.style.pointerEvents   = 'none';
+      clone.style.transition      = 'none';
       clone.style.transformOrigin = '0 0';
       clone.style.transform = `translate(${R - cx * magZoom}px,${R - cy * magZoom}px) scale(${magZoom})`;
+
+      // Gray out non-selected seats; highlight selected ones
+      const selectedKeys = new Set(this._selected);
+      clone.querySelectorAll('[data-sk]').forEach(e => {
+        const key = e.dataset.sk;
+        const inSection = this._seatSectionMap[key] === section;
+        if (!inSection) {
+          // Outside this section: hide completely
+          e.style.visibility = 'hidden';
+        } else if (selectedKeys.has(key)) {
+          // Selected: keep color, add strong ring
+          const catColor = this._catColor(e.dataset.cat);
+          e.style.boxShadow = catColor + ' 0px 0px 0px 2px, rgba(255,255,255,0.9) 0px 0px 0px 3px inset';
+          e.style.zIndex = '5';
+        } else {
+          // Available but not selected: gray
+          e.style.background = '#e5e7eb';
+          e.style.color      = '#9ca3af';
+          e.style.border     = '1px solid #d1d5db';
+          e.style.boxShadow  = 'none';
+        }
+        // Remove animate classes from clone
+        e.classList.remove('animate__animated', 'animate__pulse');
+      });
+
       this._lensInner.appendChild(clone);
 
-      const selCount = sectionSeats.filter(e => this._selected.has(e.dataset.sk)).length;
-      this._lensLabel.innerHTML = `<span style="display:inline-block;background:rgba(255,255,255,0.92);border-radius:999px;padding:3px 14px;font-size:11px;font-weight:700;color:#374151;box-shadow:0 1px 6px rgba(0,0,0,0.12)">${section}${selCount ? ` · ${selCount} sélectionné${selCount>1?'s':''}` : ''}</span>`;
+      const selCount = sectionSeats.filter(e => selectedKeys.has(e.dataset.sk)).length;
+      this._lensLabel.innerHTML = selCount
+        ? `<span style="display:inline-block;background:rgba(255,255,255,0.93);border-radius:999px;padding:3px 14px;font-size:11px;font-weight:700;color:#374151;box-shadow:0 1px 6px rgba(0,0,0,0.12)">${section} · ${selCount} sélectionné${selCount>1?'s':''}</span>`
+        : `<span style="display:inline-block;background:rgba(255,255,255,0.93);border-radius:999px;padding:3px 14px;font-size:11px;font-weight:700;color:#374151;box-shadow:0 1px 6px rgba(0,0,0,0.12)">${section}</span>`;
 
       this._lens.style.display = 'block';
     }
@@ -688,7 +723,7 @@
       if (planStatus!=='deleted') {
         s.addEventListener('mouseenter', () => {
           if (this._zoom < 0.5) {
-            this._showLens(tipInfo.section || '');
+            this._showLens(s, tipInfo.section || '');
           } else if (planStatus !== 'disabled') {
             this._showTooltip(s, {...tipInfo, key, planStatus});
             if (this._selected.has(key)) {
