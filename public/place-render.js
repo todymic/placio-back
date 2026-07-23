@@ -489,125 +489,128 @@
     // ── microscope lens ──────────────────────────────────────────────────────────
 
     _buildLens(root) {
-      const D = 220;
-      const lens = css(el('div'), {
-        position: 'absolute', width: D+'px', height: D+'px',
-        borderRadius: '50%', overflow: 'hidden',
-        border: '3px solid #9ca3af',
-        boxShadow: '0 8px 32px rgba(0,0,0,0.22)',
-        zIndex: '100', pointerEvents: 'none', display: 'none',
-        background: '#fff',
-      });
-      const inner = css(el('div'), { position: 'absolute', inset: '0', overflow: 'hidden' });
-      lens.appendChild(inner);
-
-      const label = css(el('div'), {
-        position: 'absolute', bottom: '-28px', left: '0', right: '0',
-        textAlign: 'center', zIndex: '3', pointerEvents: 'none',
-        fontSize: '12px', fontWeight: '700',
-      });
-
-      this._lens      = lens;
-      this._lensInner = inner;
-      this._lensLabel = label;
-      root.appendChild(lens);
-      root.appendChild(label);
+      // Single container; circles rebuilt on each update
+      const wrap = css(el('div'), { position:'absolute', inset:'0', pointerEvents:'none', zIndex:'100' });
+      this._lensWrap = wrap;
+      root.appendChild(wrap);
     }
 
     // Called on selection change and zoom change
     _updateLens() {
-      if (!this._lens) return;
-      if (this._zoom > 0.5 || this._selected.size === 0) {
-        this._hideLens(); return;
+      if (!this._lensWrap) return;
+      this._lensWrap.innerHTML = '';
+
+      if (this._zoom > 0.5 || this._selected.size === 0) return;
+
+      // Group selected keys by section
+      const bySection = {};
+      for (const key of this._selected) {
+        const sec = this._seatSectionMap[key] || '__none__';
+        (bySection[sec] = bySection[sec] || []).push(key);
       }
 
-      // Collect selected seat elements
-      const selectedEls = [...this._canvas.querySelectorAll('[data-sk]')]
-        .filter(e => this._selected.has(e.dataset.sk));
-      if (!selectedEls.length) { this._hideLens(); return; }
+      for (const [section, keys] of Object.entries(bySection)) {
+        this._drawOneCircle(section, keys);
+      }
+    }
 
-      const D = 220, R = D / 2;
+    _drawOneCircle(section, selectedKeys) {
+      const selSet  = new Set(selectedKeys);
       const rootRect = this._root.getBoundingClientRect();
 
-      // Viewport centroid of selected seats → position lens there
-      let vx = 0, vy = 0;
-      for (const e of selectedEls) {
+      // Viewport positions (relative to root) of selected seats in this section
+      const positions = [];
+      for (const key of selectedKeys) {
+        const e = this._canvas.querySelector(`[data-sk="${CSS.escape(key)}"]`);
+        if (!e) continue;
         const r = e.getBoundingClientRect();
-        vx += r.left + r.width  / 2;
-        vy += r.top  + r.height / 2;
+        positions.push({ x: r.left + r.width/2  - rootRect.left,
+                         y: r.top  + r.height/2 - rootRect.top });
       }
-      vx = vx / selectedEls.length - rootRect.left;
-      vy = vy / selectedEls.length - rootRect.top;
+      if (!positions.length) return;
 
-      // Clamp so lens stays inside root
-      const lx = Math.max(R + 4, Math.min(vx, rootRect.width  - R - 4));
-      const ly = Math.max(R + 4, Math.min(vy, rootRect.height - R - 4));
-      this._lens.style.left = lx + 'px';
-      this._lens.style.top  = ly + 'px';
-      this._lensLabel.style.left = (lx - R) + 'px';
-      this._lensLabel.style.top  = (ly + R + 6) + 'px';
-      this._lensLabel.style.width = D + 'px';
+      // Centroid
+      let cx = 0, cy = 0;
+      for (const p of positions) { cx += p.x; cy += p.y; }
+      cx /= positions.length; cy /= positions.length;
 
-      // Border = first selected category color
-      const firstKey   = [...this._selected][0];
-      const catColor   = this._catColor(this._seatCatMap[firstKey]);
-      this._lens.style.border = `3px solid ${catColor}`;
-      this._lensLabel.style.color = catColor;
-
-      // Canvas-local bbox of selected seats via offsetLeft/offsetTop
-      const getOffset = (el) => {
-        let x = 0, y = 0, cur = el;
-        while (cur && cur !== this._canvas) {
-          x += cur.offsetLeft || 0; y += cur.offsetTop || 0;
-          cur = cur.offsetParent;
-        }
-        return { x, y, w: el.offsetWidth || 22, h: el.offsetHeight || 22 };
-      };
-
-      let bx0=Infinity,by0=Infinity,bx1=-Infinity,by1=-Infinity;
-      for (const e of selectedEls) {
-        const {x,y,w,h} = getOffset(e);
-        bx0=Math.min(bx0,x); by0=Math.min(by0,y);
-        bx1=Math.max(bx1,x+w); by1=Math.max(by1,y+h);
+      // Radius = max distance from centroid to any selected seat + half-seat + padding
+      const sampleEl = this._canvas.querySelector(`[data-sk="${CSS.escape(selectedKeys[0])}"]`);
+      const seatPx   = (sampleEl ? sampleEl.getBoundingClientRect().width : 0) / 2;
+      const pad      = 24;
+      let maxDist = 0;
+      for (const p of positions) {
+        maxDist = Math.max(maxDist, Math.sqrt((p.x-cx)**2 + (p.y-cy)**2));
       }
-      const pad = 28;
-      const bw = Math.max(bx1-bx0, 10), bh = Math.max(by1-by0, 10);
-      const magZoom = Math.min((D-pad*2)/bw, (D-pad*2)/bh, 6.0);
-      const cx = (bx0+bx1)/2, cy = (by0+by1)/2;
+      const R = Math.max(50, maxDist + seatPx + pad);
+      const D = R * 2;
 
-      // Clone canvas, gray non-selected, hide other sections' elements
-      this._lensInner.innerHTML = '';
+      const catColor = this._catColor(this._seatCatMap[selectedKeys[0]]);
+
+      // Circle container
+      const circle = css(el('div'), {
+        position:'absolute',
+        left: (cx - R) + 'px', top: (cy - R) + 'px',
+        width: D+'px', height: D+'px',
+        borderRadius:'50%', overflow:'hidden',
+        border: `3px solid ${catColor}`,
+        boxShadow: '0 4px 24px rgba(0,0,0,0.18)',
+        background: 'rgba(255,255,255,0.9)',
+      });
+
+      // Clone canvas and align it exactly under the circle
+      // Transform formula (no extra magnification):
+      //   translate(panX - (cx-R),  panY - (cy-R)) scale(zoom)
+      // → the canvas content at root-position (px,py) appears at circle-pos (px-(cx-R), py-(cy-R))
+      // → centroid at root (cx,cy) → circle-pos (cx-(cx-R), cy-(cy-R)) = (R, R) ✓
       const clone = this._canvas.cloneNode(true);
       clone.style.pointerEvents   = 'none';
       clone.style.transition      = 'none';
       clone.style.transformOrigin = '0 0';
-      clone.style.transform = `translate(${R - cx*magZoom}px,${R - cy*magZoom}px) scale(${magZoom})`;
+      clone.style.transform =
+        `translate(${this._panX - (cx - R)}px,${this._panY - (cy - R)}px) scale(${this._zoom})`;
 
+      // Style seats inside the clone
       clone.querySelectorAll('[data-sk]').forEach(e => {
         e.classList.remove('animate__animated','animate__pulse');
-        if (this._selected.has(e.dataset.sk)) {
+        const key       = e.dataset.sk;
+        const inSection = this._seatSectionMap[key] === section;
+
+        if (selSet.has(key)) {
+          // Selected → keep colour + strong ring
           const c = this._catColor(e.dataset.cat);
-          e.style.boxShadow = c+' 0px 0px 0px 2px, rgba(255,255,255,0.9) 0px 0px 0px 3px inset';
-          e.style.zIndex = '5';
-        } else {
-          e.style.background = '#e5e7eb';
-          e.style.color      = '#9ca3af';
-          e.style.border     = '1px solid #d1d5db';
+          e.style.boxShadow = `${c} 0px 0px 0px 2.5px, rgba(255,255,255,0.9) 0px 0px 0px 3px inset`;
+          e.style.zIndex    = '5';
+        } else if (inSection) {
+          // Same section, not selected → gray
+          e.style.background = '#d1d5db';
+          e.style.color      = 'transparent';
+          e.style.border     = 'none';
           e.style.boxShadow  = 'none';
           e.innerHTML        = '';
+        } else {
+          // Other sections → invisible
+          e.style.visibility = 'hidden';
         }
       });
-      this._lensInner.appendChild(clone);
 
-      const selCount = this._selected.size;
-      this._lensLabel.textContent = `${selCount} sélectionné${selCount>1?'s':''}`;
-      this._lens.style.display = 'block';
-      this._lensLabel.style.display = 'block';
+      circle.appendChild(clone);
+      this._lensWrap.appendChild(circle);
+
+      // Label below circle
+      const lbl = css(el('div'), {
+        position:'absolute',
+        left: (cx - R) + 'px', top: (cy + R + 6) + 'px',
+        width: D + 'px', textAlign:'center',
+        fontSize:'12px', fontWeight:'700', color: catColor,
+        textShadow:'0 1px 3px rgba(255,255,255,0.9)',
+      });
+      lbl.textContent = section;
+      this._lensWrap.appendChild(lbl);
     }
 
     _hideLens() {
-      if (this._lens) { this._lens.style.display = 'none'; }
-      if (this._lensLabel) { this._lensLabel.style.display = 'none'; }
+      if (this._lensWrap) this._lensWrap.innerHTML = '';
     }
 
     // ── seat styles ───────────────────────────────────────────────────────────────
