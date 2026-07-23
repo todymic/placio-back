@@ -339,12 +339,13 @@
     _buildControls(root) {
       // Zoom-out magnifier: returns to 50% overview
       const btn = css(el('button'), {
-        position:'absolute', bottom:'14px', left:'14px', zIndex:'20',
+        position:'absolute', bottom:'10px', left:'10px', zIndex:'110',
         width:'40px', height:'40px', borderRadius:'50%',
         background:'#fff', border:'none',
         boxShadow:'0 2px 10px rgba(0,0,0,0.14)',
         cursor:'pointer', display:'none',
         alignItems:'center', justifyContent:'center', padding:'0',
+        transition:'transform 0.15s, box-shadow 0.15s',
       });
       btn.title = 'Vue d\'ensemble (50%)';
       btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
