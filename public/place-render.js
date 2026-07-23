@@ -211,12 +211,22 @@
 
     _fitToContainer() {
       const {w,h,minX,minY} = this._bbox;
-      const scale = Math.min(this._cw/w, this._ch/h) * 0.92;
-      this._minZoom = scale * 0.75; // can't zoom out below 75% of initial fit
+      const scale = 0.5; // always start at 50%
+      this._minZoom = 0.5;
       this._zoom = scale;
       this._panX = -minX*scale + (this._cw - w*scale)/2;
       this._panY = -minY*scale + (this._ch - h*scale)/2;
       this._applyTransform();
+    }
+
+    // Animate back to 50% overview centered on the plan
+    _zoomToFit50(dur) {
+      const {w,h,minX} = this._bbox;
+      const {minY} = this._bbox;
+      const scale = 0.5;
+      const px2 = -minX*scale + (this._cw - w*scale)/2;
+      const py2 = -minY*scale + (this._ch - h*scale)/2;
+      this._animateZoom(scale, px2, py2, dur || 380);
     }
 
     _applyTransform(animated) {
@@ -226,8 +236,8 @@
         this._canvas.style.transition = 'none';
       }
       this._canvas.style.transform = `translate(${this._panX}px,${this._panY}px) scale(${this._zoom})`;
-      if (this._zoomBadge) this._zoomBadge.textContent = Math.round(this._zoom*100)+'%';
       if (this._mmWrap) this._mmWrap.style.display = this._zoom > 1 ? 'block' : 'none';
+      this._updateZoomOutBtn();
       this._updateLens();
     }
 
@@ -245,9 +255,9 @@
         this._panX = px1 + (px2 - px1) * t;
         this._panY = py1 + (py2 - py1) * t;
         this._canvas.style.transform = `translate(${this._panX}px,${this._panY}px) scale(${this._zoom})`;
-        if (this._zoomBadge) this._zoomBadge.textContent = Math.round(this._zoom*100)+'%';
         if (this._mmWrap) this._mmWrap.style.display = this._zoom > 1 ? 'block' : 'none';
         this._updateMinimap();
+        this._updateZoomOutBtn();
         this._updateLens();
         if (t < 1) {
           this._animFrame = requestAnimationFrame(tick);
@@ -324,74 +334,35 @@
       this._viewport.style.cursor = 'grab';
     }
 
-    // ── controls (+/−/badge/fullscreen) ─────────────────────────────────────────
+    // ── zoom-out button (bottom-left, visible when zoom > 50%) ──────────────────
 
     _buildControls(root) {
-      const wrap = css(el('div'), {
-        position:'absolute', top:'10px', right:'10px', zIndex:'20',
-        display:'flex', alignItems:'center', gap:'2px',
-        background:'#f1f5f9', borderRadius:'8px', padding:'2px',
-        boxShadow:'0 1px 4px rgba(0,0,0,0.08)',
+      // Zoom-out magnifier: returns to 50% overview
+      const btn = css(el('button'), {
+        position:'absolute', bottom:'14px', left:'14px', zIndex:'20',
+        width:'40px', height:'40px', borderRadius:'50%',
+        background:'#fff', border:'none',
+        boxShadow:'0 2px 10px rgba(0,0,0,0.14)',
+        cursor:'pointer', display:'none',
+        alignItems:'center', justifyContent:'center', padding:'0',
       });
-
-      const btnBase = {
-        width:'28px', height:'28px', borderRadius:'6px',
-        background:'transparent', border:'none',
-        display:'flex', alignItems:'center', justifyContent:'center',
-        cursor:'pointer', fontSize:'15px', fontWeight:'700', color:'#475569', lineHeight:'1',
-        padding:'0',
-      };
-
-      const mkBtn = (label, title, onClick) => {
-        const b = css(el('button'), btnBase);
-        b.textContent = label; b.title = title;
-        b.addEventListener('click', onClick);
-        b.addEventListener('mouseenter', () => css(b, {background:'#ffffff'}));
-        b.addEventListener('mouseleave', () => css(b, {background:'transparent'}));
-        return b;
-      };
-
-      const badge = css(el('div'), {
-        padding:'0 8px', height:'28px', lineHeight:'28px',
-        fontSize:'12px', fontWeight:'600', color:'#64748b',
-        cursor:'pointer', minWidth:'44px', textAlign:'center',
-      });
-      badge.title = 'Réinitialiser';
-      badge.addEventListener('click', () => { this._fitToContainer(); this._updateMinimap(); });
-      this._zoomBadge = badge;
-
-      wrap.appendChild(mkBtn('−','Dézoomer', () => this._zoomCenteredOnSmooth(this._cw/2,this._ch/2, 1/1.25)));
-      wrap.appendChild(badge);
-      wrap.appendChild(mkBtn('+','Zoomer',   () => this._zoomCenteredOnSmooth(this._cw/2,this._ch/2, 1.25)));
-
-      const sep = css(el('div'), {width:'1px',height:'20px',background:'#e2e8f0',margin:'0 2px'});
-      wrap.appendChild(sep);
-
-      const fsBtn = mkBtn('⛶','Plein écran', () => this._toggleFullscreen());
-      fsBtn.style.fontSize = '18px';
-      this._fsBtn = fsBtn;
-      wrap.appendChild(fsBtn);
-
-      root.appendChild(wrap);
-
-      document.addEventListener('fullscreenchange', () => {
-        const inFs = !!document.fullscreenElement;
-        if (this._fsBtn) this._fsBtn.textContent = inFs ? '⊡' : '⛶';
-        if (!inFs) { this._cw = root.clientWidth; this._ch = root.clientHeight; }
-      });
+      btn.title = 'Vue d\'ensemble (50%)';
+      btn.innerHTML = `<svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <circle cx="8.5" cy="8.5" r="5.5" stroke="#374151" stroke-width="1.8"/>
+        <line x1="5.5" y1="8.5" x2="11.5" y2="8.5" stroke="#374151" stroke-width="1.8" stroke-linecap="round"/>
+        <line x1="12.5" y1="12.5" x2="16" y2="16" stroke="#374151" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>`;
+      btn.addEventListener('mouseenter', () => { btn.style.boxShadow='0 4px 16px rgba(0,0,0,0.2)'; btn.style.transform='scale(1.08)'; });
+      btn.addEventListener('mouseleave', () => { btn.style.boxShadow='0 2px 10px rgba(0,0,0,0.14)'; btn.style.transform=''; });
+      btn.addEventListener('click', () => this._zoomToFit50());
+      this._zoomOutBtn = btn;
+      root.appendChild(btn);
     }
 
-    _toggleFullscreen() {
-      if (!document.fullscreenElement) {
-        this._root.requestFullscreen?.().then(() => {
-          this._cw = this._root.clientWidth;
-          this._ch = this._root.clientHeight;
-          this._fitToContainer();
-          this._updateMinimap();
-        }).catch(() => {});
-      } else {
-        document.exitFullscreen?.();
-      }
+    _updateZoomOutBtn() {
+      if (!this._zoomOutBtn) return;
+      const show = this._zoom > 0.55;
+      this._zoomOutBtn.style.display = show ? 'flex' : 'none';
     }
 
     // ── minimap ─────────────────────────────────────────────────────────────────
@@ -606,8 +577,19 @@
         pointerEvents: 'auto',
       });
       circle.addEventListener('click', () => {
-        const bbox = this._sectionCanvasBbox(section);
-        if (bbox) this._zoomToFitBbox(bbox.x, bbox.y, bbox.w, bbox.h);
+        // Zoom to 150% centered on the centroid of selected seats
+        const rootRect = this._root.getBoundingClientRect();
+        let vx = 0, vy = 0, n = 0;
+        for (const key of selectedKeys) {
+          const e = this._canvas.querySelector(`[data-sk="${CSS.escape(key)}"]`);
+          if (!e) continue;
+          const r = e.getBoundingClientRect();
+          vx += r.left + r.width/2  - rootRect.left;
+          vy += r.top  + r.height/2 - rootRect.top;
+          n++;
+        }
+        if (!n) return;
+        this._zoomToLevel(1.5, vx/n, vy/n);
       });
 
       // Clone canvas and align it exactly under the circle
@@ -716,11 +698,11 @@
       if (this._didDrag) return;
       if (!this._isClickable(key, planStatus)) return;
 
-      // Two-phase when zoomed out: first click → zoom to 145 % centred on seat
-      if (this._zoom < 1.0) {
+      // If not at 150 %, zoom to 150 % centred on seat first (no selection yet)
+      if (this._zoom < 1.49) {
         const vr = this._viewport.getBoundingClientRect();
         const er = seatEl.getBoundingClientRect();
-        this._zoomToLevel(1.45, er.left+er.width/2-vr.left, er.top+er.height/2-vr.top);
+        this._zoomToLevel(1.5, er.left+er.width/2-vr.left, er.top+er.height/2-vr.top);
         return;
       }
 
